@@ -34,6 +34,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
   final ImagePicker _picker = ImagePicker();
   final TextEditingController _docIdController = TextEditingController();
   int _currentIndex = 3; // Profile is index 3
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -92,6 +93,15 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
         print("User data fetched: ${widget.userName}, ProfileImage: $_profileImageUrl, Role: ${snapshot.get('role')}");
 
         try {
+          String docId =""; 
+        final QuerySnapshot querySnapshot = await _firestore
+            .collection('users')
+            .where('email', isEqualTo: user.email)
+            .get();
+
+        if (querySnapshot.docs.isNotEmpty) {
+          docId = querySnapshot.docs.first.id;
+        }
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('userName', widget.userName);
           await prefs.setString('userEmail', _userEmail ?? '');

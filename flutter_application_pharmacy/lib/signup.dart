@@ -102,7 +102,7 @@ class _SignUpState extends State<SignUp> with SingleTickerProviderStateMixin {
       print("Generated docId: $docId");
 
       // Save to 'users' collection
-      await _firestore.collection('users').doc(docId).set({
+      await _firestore.collection('users').add({
         'role': selectedRole,
         'email': email,
         'name': name,
