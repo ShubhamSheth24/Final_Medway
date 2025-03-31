@@ -10,7 +10,7 @@
 // import 'dart:io';
 // import 'package:provider/provider.dart';
 // import 'package:shared_preferences/shared_preferences.dart';
-// import 'package:flutter/services.dart';
+// import 'package:flutter/services.dart'; // For Clipboard
 // import 'home_page.dart';
 // import 'reports.dart';
 // import 'medicine_reminders.dart';
@@ -311,6 +311,17 @@
 //     }
 //   }
 
+//   // Handle system back button to navigate to HomePage
+//   Future<bool> _onWillPop() async {
+//     Navigator.pushReplacement(
+//       context,
+//       MaterialPageRoute(
+//         builder: (context) => HomePage(userName: widget.userName),
+//       ),
+//     );
+//     return false; // Prevent default back behavior after navigation
+//   }
+
 //   @override
 //   Widget build(BuildContext context) {
 //     final user = FirebaseAuth.instance.currentUser;
@@ -318,271 +329,280 @@
 //     final isPatient = userModel.role == 'Patient';
 //     final isCaretaker = userModel.role == 'Caretaker';
 
-//     return Scaffold(
-//       backgroundColor: Colors.white,
-//       body:
-//           _isLoading
-//               ? const Center(child: CircularProgressIndicator())
-//               : user == null
-//               ? const Center(child: Text('Please sign in to view your profile'))
-//               : SingleChildScrollView(
-//                 child: Padding(
-//                   padding: const EdgeInsets.fromLTRB(
-//                     16,
-//                     60,
-//                     16,
-//                     16,
-//                   ), // Adjusted top padding
-//                   child: Column(
-//                     crossAxisAlignment:
-//                         CrossAxisAlignment.center, // Center the content
-//                     children: [
-//                       const SizedBox(
-//                         height: 20,
-//                       ), // Added space to push content down
-//                       Stack(
-//                         alignment: Alignment.bottomRight,
-//                         children: [
-//                           FadeTransition(
-//                             opacity: _fadeAnimation,
-//                             child: Container(
-//                               decoration: BoxDecoration(
-//                                 shape: BoxShape.circle,
-//                                 border: Border.all(
-//                                   color: Colors.blueAccent.withOpacity(0.5),
-//                                   width: 2,
-//                                 ),
-//                                 boxShadow: [
-//                                   BoxShadow(
-//                                     color: Colors.grey.withOpacity(0.2),
-//                                     spreadRadius: 2,
-//                                     blurRadius: 6,
-//                                     offset: const Offset(0, 2),
-//                                   ),
-//                                 ],
-//                               ),
-//                               child: CircleAvatar(
-//                                 radius: 50,
-//                                 backgroundImage:
-//                                     _profileImageUrl != null &&
-//                                             _profileImageUrl!.isNotEmpty
-//                                         ? NetworkImage(_profileImageUrl!)
-//                                         : const AssetImage('assets/profile.jpg')
-//                                             as ImageProvider,
-//                                 backgroundColor: Colors.grey[200],
-//                                 onBackgroundImageError: (
-//                                   exception,
-//                                   stackTrace,
-//                                 ) {
-//                                   print("Error loading image: $exception");
-//                                 },
-//                               ),
-//                             ),
-//                           ),
-//                           if (!_isLoading)
-//                             Positioned(
-//                               bottom: 0,
-//                               right: 0,
-//                               child: GestureDetector(
-//                                 onTap: _pickImage,
-//                                 child: CircleAvatar(
-//                                   radius: 18,
-//                                   backgroundColor: Colors.blueAccent,
-//                                   child: const Icon(
-//                                     Icons.edit,
-//                                     size: 20,
-//                                     color: Colors.white,
-//                                   ),
-//                                 ),
-//                               ),
-//                             ),
-//                           if (_isLoading)
-//                             const Positioned(
-//                               bottom: 0,
-//                               right: 0,
-//                               child: CircularProgressIndicator(
-//                                 color: Colors.blueAccent,
-//                                 strokeWidth: 2,
-//                               ),
-//                             ),
-//                         ],
-//                       ),
-//                       const SizedBox(height: 16),
-//                       FadeTransition(
-//                         opacity: _fadeAnimation,
-//                         child: Text(
-//                           widget.userName,
-//                           style: const TextStyle(
-//                             fontSize: 24,
-//                             fontWeight: FontWeight.bold,
-//                             color: Colors.black87,
-//                           ),
-//                         ),
-//                       ),
-//                       const SizedBox(height: 8),
-//                       FadeTransition(
-//                         opacity: _fadeAnimation,
-//                         child: Column(
+//     return WillPopScope(
+//       onWillPop: _onWillPop, // Intercept system back button
+//       child: Scaffold(
+//         backgroundColor: Colors.white,
+//         body:
+//             _isLoading
+//                 ? const Center(child: CircularProgressIndicator())
+//                 : user == null
+//                 ? const Center(
+//                   child: Text('Please sign in to view your profile'),
+//                 )
+//                 : SingleChildScrollView(
+//                   child: Padding(
+//                     padding: const EdgeInsets.fromLTRB(
+//                       16,
+//                       60,
+//                       16,
+//                       16,
+//                     ), // Adjusted top padding
+//                     child: Column(
+//                       crossAxisAlignment:
+//                           CrossAxisAlignment.center, // Center the content
+//                       children: [
+//                         const SizedBox(
+//                           height: 20,
+//                         ), // Added space to push content down
+//                         Stack(
+//                           alignment: Alignment.bottomRight,
 //                           children: [
-//                             Text(
-//                               _userEmail ?? 'Loading...',
-//                               style: const TextStyle(
-//                                 fontSize: 16,
-//                                 color: Colors.grey,
-//                               ),
-//                             ),
-//                             if (_linkedDocId != null &&
-//                                 _linkedDocId!.isNotEmpty) ...[
-//                               const SizedBox(height: 4),
-//                               Text(
-//                                 isPatient
-//                                     ? 'Caretaker ID: $_linkedDocId'
-//                                     : 'Linked to Patient: $_linkedDocId',
-//                                 style: const TextStyle(
-//                                   fontSize: 14,
-//                                   color: Colors.blueAccent,
+//                             FadeTransition(
+//                               opacity: _fadeAnimation,
+//                               child: Container(
+//                                 decoration: BoxDecoration(
+//                                   shape: BoxShape.circle,
+//                                   border: Border.all(
+//                                     color: Colors.blueAccent.withOpacity(0.5),
+//                                     width: 2,
+//                                   ),
+//                                   boxShadow: [
+//                                     BoxShadow(
+//                                       color: Colors.grey.withOpacity(0.2),
+//                                       spreadRadius: 2,
+//                                       blurRadius: 6,
+//                                       offset: const Offset(0, 2),
+//                                     ),
+//                                   ],
+//                                 ),
+//                                 child: CircleAvatar(
+//                                   radius: 50,
+//                                   backgroundImage:
+//                                       _profileImageUrl != null &&
+//                                               _profileImageUrl!.isNotEmpty
+//                                           ? NetworkImage(_profileImageUrl!)
+//                                           : const AssetImage(
+//                                                 'assets/profile.jpg',
+//                                               )
+//                                               as ImageProvider,
+//                                   backgroundColor: Colors.grey[200],
+//                                   onBackgroundImageError: (
+//                                     exception,
+//                                     stackTrace,
+//                                   ) {
+//                                     print("Error loading image: $exception");
+//                                   },
 //                                 ),
 //                               ),
-//                             ],
+//                             ),
+//                             if (!_isLoading)
+//                               Positioned(
+//                                 bottom: 0,
+//                                 right: 0,
+//                                 child: GestureDetector(
+//                                   onTap: _pickImage,
+//                                   child: CircleAvatar(
+//                                     radius: 18,
+//                                     backgroundColor: Colors.blueAccent,
+//                                     child: const Icon(
+//                                       Icons.edit,
+//                                       size: 20,
+//                                       color: Colors.white,
+//                                     ),
+//                                   ),
+//                                 ),
+//                               ),
+//                             if (_isLoading)
+//                               const Positioned(
+//                                 bottom: 0,
+//                                 right: 0,
+//                                 child: CircularProgressIndicator(
+//                                   color: Colors.blueAccent,
+//                                   strokeWidth: 2,
+//                                 ),
+//                               ),
 //                           ],
 //                         ),
-//                       ),
-//                       const SizedBox(height: 16),
-//                       if (_docId != null &&
-//                           isPatient &&
-//                           (_linkedDocId == null || _linkedDocId!.isEmpty))
+//                         const SizedBox(height: 16),
 //                         FadeTransition(
 //                           opacity: _fadeAnimation,
-//                           child: Row(
-//                             mainAxisAlignment: MainAxisAlignment.center,
+//                           child: Text(
+//                             widget.userName,
+//                             style: const TextStyle(
+//                               fontSize: 24,
+//                               fontWeight: FontWeight.bold,
+//                               color: Colors.black87,
+//                             ),
+//                           ),
+//                         ),
+//                         const SizedBox(height: 8),
+//                         FadeTransition(
+//                           opacity: _fadeAnimation,
+//                           child: Column(
 //                             children: [
 //                               Text(
-//                                 'Your Doc ID: $_docId',
+//                                 _userEmail ?? 'Loading...',
 //                                 style: const TextStyle(
 //                                   fontSize: 16,
-//                                   color: Colors.blueAccent,
+//                                   color: Colors.grey,
 //                                 ),
 //                               ),
-//                               const SizedBox(width: 8),
-//                               IconButton(
-//                                 icon: const Icon(
-//                                   Icons.copy,
-//                                   size: 20,
-//                                   color: Colors.blueAccent,
+//                               if (_linkedDocId != null &&
+//                                   _linkedDocId!.isNotEmpty) ...[
+//                                 const SizedBox(height: 4),
+//                                 Text(
+//                                   isPatient
+//                                       ? 'Caretaker ID: $_linkedDocId'
+//                                       : 'Linked to Patient: $_linkedDocId',
+//                                   style: const TextStyle(
+//                                     fontSize: 14,
+//                                     color: Colors.blueAccent,
+//                                   ),
 //                                 ),
-//                                 onPressed: () => _copyDocIdToClipboard(_docId!),
-//                                 tooltip: 'Copy Doc ID',
-//                               ),
+//                               ],
 //                             ],
 //                           ),
 //                         ),
-//                       if (isCaretaker &&
-//                           (_linkedDocId == null || _linkedDocId!.isEmpty))
-//                         FadeTransition(
-//                           opacity: _fadeAnimation,
-//                           child: Row(
-//                             children: [
-//                               Expanded(
-//                                 child: TextField(
-//                                   controller: _docIdController,
-//                                   decoration: InputDecoration(
-//                                     hintText: 'Enter Patient Doc ID',
-//                                     border: OutlineInputBorder(
+//                         const SizedBox(height: 16),
+//                         if (_docId != null &&
+//                             isPatient &&
+//                             (_linkedDocId == null || _linkedDocId!.isEmpty))
+//                           FadeTransition(
+//                             opacity: _fadeAnimation,
+//                             child: Row(
+//                               mainAxisAlignment: MainAxisAlignment.center,
+//                               children: [
+//                                 Text(
+//                                   'Your Doc ID: $_docId',
+//                                   style: const TextStyle(
+//                                     fontSize: 16,
+//                                     color: Colors.blueAccent,
+//                                   ),
+//                                 ),
+//                                 const SizedBox(width: 8),
+//                                 IconButton(
+//                                   icon: const Icon(
+//                                     Icons.copy,
+//                                     size: 20,
+//                                     color: Colors.blueAccent,
+//                                   ),
+//                                   onPressed:
+//                                       () => _copyDocIdToClipboard(_docId!),
+//                                   tooltip: 'Copy Doc ID',
+//                                 ),
+//                               ],
+//                             ),
+//                           ),
+//                         if (isCaretaker &&
+//                             (_linkedDocId == null || _linkedDocId!.isEmpty))
+//                           FadeTransition(
+//                             opacity: _fadeAnimation,
+//                             child: Row(
+//                               children: [
+//                                 Expanded(
+//                                   child: TextField(
+//                                     controller: _docIdController,
+//                                     decoration: InputDecoration(
+//                                       hintText: 'Enter Patient Doc ID',
+//                                       border: OutlineInputBorder(
+//                                         borderRadius: BorderRadius.circular(12),
+//                                       ),
+//                                       contentPadding:
+//                                           const EdgeInsets.symmetric(
+//                                             horizontal: 12,
+//                                             vertical: 8,
+//                                           ),
+//                                     ),
+//                                   ),
+//                                 ),
+//                                 const SizedBox(width: 8),
+//                                 ElevatedButton(
+//                                   onPressed:
+//                                       _isLoading
+//                                           ? null
+//                                           : () => _linkCaretaker(
+//                                             _docIdController.text.trim(),
+//                                           ),
+//                                   style: ElevatedButton.styleFrom(
+//                                     padding: const EdgeInsets.symmetric(
+//                                       horizontal: 16,
+//                                       vertical: 12,
+//                                     ),
+//                                     shape: RoundedRectangleBorder(
 //                                       borderRadius: BorderRadius.circular(12),
 //                                     ),
-//                                     contentPadding: const EdgeInsets.symmetric(
-//                                       horizontal: 12,
-//                                       vertical: 8,
-//                                     ),
 //                                   ),
-//                                 ),
-//                               ),
-//                               const SizedBox(width: 8),
-//                               ElevatedButton(
-//                                 onPressed:
-//                                     _isLoading
-//                                         ? null
-//                                         : () => _linkCaretaker(
-//                                           _docIdController.text.trim(),
-//                                         ),
-//                                 style: ElevatedButton.styleFrom(
-//                                   padding: const EdgeInsets.symmetric(
-//                                     horizontal: 16,
-//                                     vertical: 12,
-//                                   ),
-//                                   shape: RoundedRectangleBorder(
-//                                     borderRadius: BorderRadius.circular(12),
-//                                   ),
-//                                 ),
-//                                 child:
-//                                     _isLoading
-//                                         ? const SizedBox(
-//                                           width: 20,
-//                                           height: 20,
-//                                           child: CircularProgressIndicator(
-//                                             strokeWidth: 2,
-//                                             color: Colors.white,
+//                                   child:
+//                                       _isLoading
+//                                           ? const SizedBox(
+//                                             width: 20,
+//                                             height: 20,
+//                                             child: CircularProgressIndicator(
+//                                               strokeWidth: 2,
+//                                               color: Colors.white,
+//                                             ),
+//                                           )
+//                                           : const Text(
+//                                             'Link',
+//                                             style: TextStyle(fontSize: 14),
 //                                           ),
-//                                         )
-//                                         : const Text(
-//                                           'Link',
-//                                           style: TextStyle(fontSize: 14),
-//                                         ),
-//                               ),
-//                             ],
+//                                 ),
+//                               ],
+//                             ),
 //                           ),
+//                         const SizedBox(height: 24),
+//                         Row(
+//                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+//                           children: [
+//                             _buildHealthStat(
+//                               "Heart rate",
+//                               "215bpm",
+//                               Icons.favorite,
+//                             ),
+//                             _buildHealthStat(
+//                               "Calories",
+//                               "756cal",
+//                               Icons.local_fire_department,
+//                             ),
+//                             _buildHealthStat(
+//                               "Weight",
+//                               "103lbs",
+//                               Icons.fitness_center,
+//                             ),
+//                           ],
 //                         ),
-//                       const SizedBox(height: 24),
-//                       Row(
-//                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-//                         children: [
-//                           _buildHealthStat(
-//                             "Heart rate",
-//                             "215bpm",
-//                             Icons.favorite,
-//                           ),
-//                           _buildHealthStat(
-//                             "Calories",
-//                             "756cal",
-//                             Icons.local_fire_department,
-//                           ),
-//                           _buildHealthStat(
-//                             "Weight",
-//                             "103lbs",
-//                             Icons.fitness_center,
-//                           ),
-//                         ],
-//                       ),
-//                       const SizedBox(height: 32),
-//                       _buildProfileOption(
-//                         context,
-//                         "FAQs",
-//                         Icons.help_outline,
-//                         Colors.orange,
-//                         () => Navigator.push(
+//                         const SizedBox(height: 32),
+//                         _buildProfileOption(
 //                           context,
-//                           MaterialPageRoute(builder: (context) => FAQsPage()),
-//                         ),
-//                       ),
-//                       _buildProfileOption(
-//                         context,
-//                         "Logout",
-//                         Icons.exit_to_app,
-//                         Colors.red,
-//                         () => Navigator.pushReplacement(
-//                           context,
-//                           MaterialPageRoute(
-//                             builder: (context) => const LogoutPage(),
+//                           "FAQs",
+//                           Icons.help_outline,
+//                           Colors.orange,
+//                           () => Navigator.push(
+//                             context,
+//                             MaterialPageRoute(builder: (context) => FAQsPage()),
 //                           ),
 //                         ),
-//                       ),
-//                     ],
+//                         _buildProfileOption(
+//                           context,
+//                           "Logout",
+//                           Icons.exit_to_app,
+//                           Colors.red,
+//                           () => Navigator.pushReplacement(
+//                             context,
+//                             MaterialPageRoute(
+//                               builder: (context) => const LogoutPage(),
+//                             ),
+//                           ),
+//                         ),
+//                       ],
+//                     ),
 //                   ),
 //                 ),
-//               ),
-//       bottomNavigationBar: CustomBottomNavBar(
-//         currentIndex: _currentIndex,
-//         onTap: _onNavBarTap,
+//         bottomNavigationBar: CustomBottomNavBar(
+//           currentIndex: _currentIndex,
+//           onTap: _onNavBarTap,
+//         ),
 //       ),
 //     );
 //   }
@@ -658,6 +678,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_application_pharmacy/home_page.dart';
 import 'package:flutter_application_pharmacy/models/user_model';
 import 'package:flutter_application_pharmacy/screens/faqs_page.dart';
 import 'package:flutter_application_pharmacy/screens/logout_page.dart';
@@ -668,10 +689,6 @@ import 'dart:io';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart'; // For Clipboard
-import 'home_page.dart';
-import 'reports.dart';
-import 'medicine_reminders.dart';
-import 'package:flutter_application_pharmacy/widgets/custom_bottom_nav_bar.dart';
 
 const defaultPadding = EdgeInsets.symmetric(horizontal: 16);
 
@@ -694,7 +711,6 @@ class _ProfilePageState extends State<ProfilePage>
   final ImagePicker _picker = ImagePicker();
   final TextEditingController _docIdController = TextEditingController();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  int _currentIndex = 3; // ProfilePage is index 3
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -927,45 +943,49 @@ class _ProfilePageState extends State<ProfilePage>
     }
   }
 
+  Future<void> _unlinkCaretaker() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null ||
+        _docId == null ||
+        _linkedDocId == null ||
+        _linkedDocId!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No caretaker linked to unlink')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      // Remove linkedDocId from patient's document
+      await _firestore.collection('users').doc(_docId).update({
+        'linkedDocId': FieldValue.delete(),
+      });
+      // Remove linkedDocId from caretaker's document
+      await _firestore.collection('users').doc(_linkedDocId).update({
+        'linkedDocId': FieldValue.delete(),
+      });
+      setState(() {
+        _linkedDocId = '';
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Caretaker unlinked successfully')),
+      );
+    } catch (e) {
+      print("Error unlinking caretaker: $e");
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error unlinking caretaker: $e')));
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
   void _copyDocIdToClipboard(String docId) {
     Clipboard.setData(ClipboardData(text: docId));
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Doc ID copied to clipboard!')),
     );
-  }
-
-  void _onNavBarTap(int index) {
-    if (index == _currentIndex) return;
-    setState(() => _currentIndex = index);
-    switch (index) {
-      case 0:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => HomePage(userName: widget.userName),
-          ),
-        );
-        break;
-      case 1:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ReportsPage(userName: widget.userName),
-          ),
-        );
-        break;
-      case 2:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => MedicineReminder(userName: widget.userName),
-          ),
-        );
-        break;
-      case 3:
-        // Already on ProfilePage, no navigation needed
-        break;
-    }
   }
 
   // Handle system back button to navigate to HomePage
@@ -987,7 +1007,7 @@ class _ProfilePageState extends State<ProfilePage>
     final isCaretaker = userModel.role == 'Caretaker';
 
     return WillPopScope(
-      onWillPop: _onWillPop, // Intercept system back button
+      onWillPop: _onWillPop,
       child: Scaffold(
         backgroundColor: Colors.white,
         body:
@@ -1252,14 +1272,20 @@ class _ProfilePageState extends State<ProfilePage>
                             ),
                           ),
                         ),
+                        if (isPatient &&
+                            _linkedDocId != null &&
+                            _linkedDocId!.isNotEmpty)
+                          _buildProfileOption(
+                            context,
+                            "Unlink Caretaker",
+                            Icons.link_off,
+                            Colors.blueGrey,
+                            _unlinkCaretaker,
+                          ),
                       ],
                     ),
                   ),
                 ),
-        bottomNavigationBar: CustomBottomNavBar(
-          currentIndex: _currentIndex,
-          onTap: _onNavBarTap,
-        ),
       ),
     );
   }

@@ -361,153 +361,174 @@
 //     }
 //   }
 
+//   // Handle system back button to navigate to HomePage
+//   Future<bool> _onWillPop() async {
+//     Navigator.pushReplacement(
+//       context,
+//       MaterialPageRoute(
+//         builder: (context) => HomePage(userName: widget.userName),
+//       ),
+//     );
+//     return false; // Prevent default back behavior after navigation
+//   }
+
 //   @override
 //   Widget build(BuildContext context) {
 //     final userModel = Provider.of<UserModel>(context);
 //     final isCaretaker = userModel.role == 'Caretaker';
 //     final isPatient = userModel.role == 'Patient';
 
-//     return Scaffold(
-//       backgroundColor: Colors.white,
-//       appBar: AppBar(
-//         toolbarHeight: 56, // Match ReportsPage height
-//         title: const Text(
-//           'Medicine Reminders',
-//           style: TextStyle(
-//             fontSize: 22, // Match ReportsPage text size
-//             fontWeight: FontWeight.w600, // Match ReportsPage font weight
-//             color: Colors.white, // Match ReportsPage text color
+//     return WillPopScope(
+//       onWillPop: _onWillPop, // Intercept system back button
+//       child: Scaffold(
+//         backgroundColor: Colors.white,
+//         appBar: AppBar(
+//           toolbarHeight: 56, // Match ReportsPage height
+//           title: const Text(
+//             'Medicine Reminders',
+//             style: TextStyle(
+//               fontSize: 22, // Match ReportsPage text size
+//               fontWeight: FontWeight.w600, // Match ReportsPage font weight
+//               color: Colors.white, // Match ReportsPage text color
+//             ),
 //           ),
-//         ),
-//         centerTitle: true, // Match ReportsPage alignment
-//         backgroundColor: Colors.blueAccent,
-//         elevation: 0, // Match ReportsPage elevation
-//         flexibleSpace: Container(
-//           decoration: const BoxDecoration(
-//             gradient: LinearGradient(
-//               colors: [
-//                 Colors.blueAccent,
-//                 Colors.lightBlueAccent,
-//               ], // Match ReportsPage gradient
-//               begin: Alignment.topLeft,
-//               end: Alignment.bottomRight,
+//           centerTitle: true, // Match ReportsPage alignment
+//           backgroundColor: Colors.blueAccent,
+//           elevation: 0, // Match ReportsPage elevation
+//           flexibleSpace: Container(
+//             decoration: const BoxDecoration(
+//               gradient: LinearGradient(
+//                 colors: [
+//                   Colors.blueAccent,
+//                   Colors.lightBlueAccent,
+//                 ], // Match ReportsPage gradient
+//                 begin: Alignment.topLeft,
+//                 end: Alignment.bottomRight,
+//               ),
 //             ),
 //           ),
 //         ),
-//       ),
-//       body:
-//           _isLoading
-//               ? const Center(child: CircularProgressIndicator())
-//               : Padding(
-//                 padding: const EdgeInsets.all(16),
-//                 child:
-//                     _reminders.isEmpty
-//                         ? const Center(child: Text('No reminders set yet.'))
-//                         : RefreshIndicator(
-//                           onRefresh: _loadReminders,
-//                           child: ListView.builder(
-//                             itemCount: _reminders.length,
-//                             itemBuilder: (context, index) {
-//                               final reminder = _reminders[index];
-//                               return FadeTransition(
-//                                 opacity: _fadeAnimation,
-//                                 child: Card(
-//                                   elevation: 2,
-//                                   shape: RoundedRectangleBorder(
-//                                     borderRadius: BorderRadius.circular(10),
-//                                   ),
-//                                   child: Padding(
-//                                     padding: const EdgeInsets.all(16),
-//                                     child: Row(
-//                                       children: [
-//                                         const Icon(
-//                                           Icons.medication,
-//                                           color: Colors.blueAccent,
-//                                         ),
-//                                         const SizedBox(width: 12),
-//                                         Expanded(
-//                                           child: Column(
-//                                             crossAxisAlignment:
-//                                                 CrossAxisAlignment.start,
-//                                             children: [
-//                                               Text(
-//                                                 reminder.medicine,
-//                                                 style: const TextStyle(
-//                                                   fontWeight: FontWeight.bold,
-//                                                   fontSize: 18,
-//                                                 ),
-//                                               ),
-//                                               Text(
-//                                                 '${reminder.dosage} • ${reminder.times.map((t) => t.format(context)).join(', ')}',
-//                                                 style: const TextStyle(
-//                                                   color: Colors.grey,
-//                                                   fontSize: 14,
-//                                                 ),
-//                                               ),
-//                                               Text(
-//                                                 '(${reminder.isDaily ? "Daily" : "Weekly"})',
-//                                                 style: const TextStyle(
-//                                                   color: Colors.grey,
-//                                                   fontSize: 12,
-//                                                 ),
-//                                               ),
-//                                               Row(
-//                                                 children: [
-//                                                   Checkbox(
-//                                                     value:
-//                                                         _takenStatus[reminder
-//                                                             .id] ??
-//                                                         false,
-//                                                     onChanged: (bool? value) {
-//                                                       setState(() {
-//                                                         _takenStatus[reminder
-//                                                                 .id] =
-//                                                             value ?? false;
-//                                                       });
-//                                                       _saveReminder(reminder);
-//                                                     },
+//         body:
+//             _isLoading
+//                 ? const Center(child: CircularProgressIndicator())
+//                 : Padding(
+//                   padding: const EdgeInsets.all(16),
+//                   child:
+//                       _reminders.isEmpty
+//                           ? const Center(child: Text('No reminders set yet.'))
+//                           : RefreshIndicator(
+//                             onRefresh: _loadReminders,
+//                             child: ListView.builder(
+//                               itemCount: _reminders.length,
+//                               itemBuilder: (context, index) {
+//                                 final reminder = _reminders[index];
+//                                 return FadeTransition(
+//                                   opacity: _fadeAnimation,
+//                                   child: Card(
+//                                     elevation: 2,
+//                                     shape: RoundedRectangleBorder(
+//                                       borderRadius: BorderRadius.circular(10),
+//                                     ),
+//                                     child: Padding(
+//                                       padding: const EdgeInsets.all(16),
+//                                       child: Row(
+//                                         children: [
+//                                           const Icon(
+//                                             Icons.medication,
+//                                             color: Colors.blueAccent,
+//                                           ),
+//                                           const SizedBox(width: 12),
+//                                           Expanded(
+//                                             child: Column(
+//                                               crossAxisAlignment:
+//                                                   CrossAxisAlignment.start,
+//                                               children: [
+//                                                 Text(
+//                                                   reminder.medicine,
+//                                                   style: const TextStyle(
+//                                                     fontWeight: FontWeight.bold,
+//                                                     fontSize: 18,
 //                                                   ),
-//                                                   const Text('Taken'),
-//                                                 ],
-//                                               ),
-//                                             ],
-//                                           ),
-//                                         ),
-//                                         if (isCaretaker)
-//                                           IconButton(
-//                                             icon: const Icon(
-//                                               Icons.delete,
-//                                               color: Colors.red,
+//                                                 ),
+//                                                 Text(
+//                                                   '${reminder.dosage} • ${reminder.times.map((t) => t.format(context)).join(', ')}',
+//                                                   style: const TextStyle(
+//                                                     color: Colors.grey,
+//                                                     fontSize: 14,
+//                                                   ),
+//                                                 ),
+//                                                 Text(
+//                                                   '(${reminder.isDaily ? "Daily" : "Weekly"})',
+//                                                   style: const TextStyle(
+//                                                     color: Colors.grey,
+//                                                     fontSize: 12,
+//                                                   ),
+//                                                 ),
+//                                                 if (isCaretaker) // Only show checkbox for Caretakers
+//                                                   Row(
+//                                                     children: [
+//                                                       Checkbox(
+//                                                         value:
+//                                                             _takenStatus[reminder
+//                                                                 .id] ??
+//                                                             false,
+//                                                         onChanged: (
+//                                                           bool? value,
+//                                                         ) {
+//                                                           setState(() {
+//                                                             _takenStatus[reminder
+//                                                                     .id] =
+//                                                                 value ?? false;
+//                                                           });
+//                                                           _saveReminder(
+//                                                             reminder,
+//                                                           );
+//                                                         },
+//                                                       ),
+//                                                       const Text('Taken'),
+//                                                     ],
+//                                                   ),
+//                                               ],
 //                                             ),
-//                                             onPressed:
-//                                                 () => setState(() {
-//                                                   _reminders.removeAt(index);
-//                                                   _takenStatus.remove(
-//                                                     reminder.id,
-//                                                   );
-//                                                   _deleteReminder(reminder.id);
-//                                                 }),
 //                                           ),
-//                                       ],
+//                                           if (isCaretaker)
+//                                             IconButton(
+//                                               icon: const Icon(
+//                                                 Icons.delete,
+//                                                 color: Colors.red,
+//                                               ),
+//                                               onPressed:
+//                                                   () => setState(() {
+//                                                     _reminders.removeAt(index);
+//                                                     _takenStatus.remove(
+//                                                       reminder.id,
+//                                                     );
+//                                                     _deleteReminder(
+//                                                       reminder.id,
+//                                                     );
+//                                                   }),
+//                                             ),
+//                                         ],
+//                                       ),
 //                                     ),
 //                                   ),
-//                                 ),
-//                               );
-//                             },
+//                                 );
+//                               },
+//                             ),
 //                           ),
-//                         ),
-//               ),
-//       floatingActionButton:
-//           isCaretaker
-//               ? FloatingActionButton(
-//                 onPressed: _showAddReminderDialog,
-//                 backgroundColor: Colors.blueAccent,
-//                 child: const Icon(Icons.add),
-//               )
-//               : null, // No FAB for patients
-//       bottomNavigationBar: CustomBottomNavBar(
-//         currentIndex: _currentIndex,
-//         onTap: _onNavBarTap,
+//                 ),
+//         floatingActionButton:
+//             isCaretaker
+//                 ? FloatingActionButton(
+//                   onPressed: _showAddReminderDialog,
+//                   backgroundColor: Colors.blueAccent,
+//                   child: const Icon(Icons.add),
+//                 )
+//                 : null, // No FAB for patients
+//         bottomNavigationBar: CustomBottomNavBar(
+//           currentIndex: _currentIndex,
+//           onTap: _onNavBarTap,
+//         ),
 //       ),
 //     );
 //   }
@@ -515,12 +536,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_application_pharmacy/home_page.dart';
 import 'package:flutter_application_pharmacy/models/reminders.dart';
 import 'package:flutter_application_pharmacy/models/user_model';
-import 'home_page.dart';
-import 'reports.dart';
-import 'package:flutter_application_pharmacy/profile_page.dart';
-import 'package:flutter_application_pharmacy/widgets/custom_bottom_nav_bar.dart';
 import 'package:provider/provider.dart';
 
 class MedicineReminder extends StatefulWidget {
@@ -543,7 +561,6 @@ class _MedicineReminderState extends State<MedicineReminder>
   String? _docId; // Autogenerated docId for the current user
   String? _linkedDocId; // For caretakers, linked patient's docId
   bool _isLoading = true;
-  int _currentIndex = 2; // MedicineReminder is index 2
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -841,40 +858,6 @@ class _MedicineReminderState extends State<MedicineReminder>
     );
   }
 
-  void _onNavBarTap(int index) {
-    if (index == _currentIndex) return;
-    setState(() => _currentIndex = index);
-    switch (index) {
-      case 0:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => HomePage(userName: widget.userName),
-          ),
-        );
-        break;
-      case 1:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ReportsPage(userName: widget.userName),
-          ),
-        );
-        break;
-      case 2:
-        // Already on MedicineReminder, no navigation needed
-        break;
-      case 3:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ProfilePage(userName: widget.userName),
-          ),
-        );
-        break;
-    }
-  }
-
   // Handle system back button to navigate to HomePage
   Future<bool> _onWillPop() async {
     Navigator.pushReplacement(
@@ -893,29 +876,26 @@ class _MedicineReminderState extends State<MedicineReminder>
     final isPatient = userModel.role == 'Patient';
 
     return WillPopScope(
-      onWillPop: _onWillPop, // Intercept system back button
+      onWillPop: _onWillPop,
       child: Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(
-          toolbarHeight: 56, // Match ReportsPage height
+          toolbarHeight: 56,
           title: const Text(
             'Medicine Reminders',
             style: TextStyle(
-              fontSize: 22, // Match ReportsPage text size
-              fontWeight: FontWeight.w600, // Match ReportsPage font weight
-              color: Colors.white, // Match ReportsPage text color
+              fontSize: 22,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
             ),
           ),
-          centerTitle: true, // Match ReportsPage alignment
+          centerTitle: true,
           backgroundColor: Colors.blueAccent,
-          elevation: 0, // Match ReportsPage elevation
+          elevation: 0,
           flexibleSpace: Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: [
-                  Colors.blueAccent,
-                  Colors.lightBlueAccent,
-                ], // Match ReportsPage gradient
+                colors: [Colors.blueAccent, Colors.lightBlueAccent],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -978,25 +958,30 @@ class _MedicineReminderState extends State<MedicineReminder>
                                                     fontSize: 12,
                                                   ),
                                                 ),
-                                                Row(
-                                                  children: [
-                                                    Checkbox(
-                                                      value:
-                                                          _takenStatus[reminder
-                                                              .id] ??
-                                                          false,
-                                                      onChanged: (bool? value) {
-                                                        setState(() {
-                                                          _takenStatus[reminder
-                                                                  .id] =
-                                                              value ?? false;
-                                                        });
-                                                        _saveReminder(reminder);
-                                                      },
-                                                    ),
-                                                    const Text('Taken'),
-                                                  ],
-                                                ),
+                                                if (isCaretaker)
+                                                  Row(
+                                                    children: [
+                                                      Checkbox(
+                                                        value:
+                                                            _takenStatus[reminder
+                                                                .id] ??
+                                                            false,
+                                                        onChanged: (
+                                                          bool? value,
+                                                        ) {
+                                                          setState(() {
+                                                            _takenStatus[reminder
+                                                                    .id] =
+                                                                value ?? false;
+                                                          });
+                                                          _saveReminder(
+                                                            reminder,
+                                                          );
+                                                        },
+                                                      ),
+                                                      const Text('Taken'),
+                                                    ],
+                                                  ),
                                               ],
                                             ),
                                           ),
@@ -1033,11 +1018,7 @@ class _MedicineReminderState extends State<MedicineReminder>
                   backgroundColor: Colors.blueAccent,
                   child: const Icon(Icons.add),
                 )
-                : null, // No FAB for patients
-        bottomNavigationBar: CustomBottomNavBar(
-          currentIndex: _currentIndex,
-          onTap: _onNavBarTap,
-        ),
+                : null,
       ),
     );
   }

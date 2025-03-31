@@ -316,6 +316,17 @@
 //     }
 //   }
 
+//   // Handle system back button to navigate to HomePage
+//   Future<bool> _onWillPop() async {
+//     Navigator.pushReplacement(
+//       context,
+//       MaterialPageRoute(
+//         builder: (context) => HomePage(userName: widget.userName),
+//       ),
+//     );
+//     return false; // Prevent default back behavior after navigation
+//   }
+
 //   @override
 //   Widget build(BuildContext context) {
 //     print("ReportsPage - Building UI...");
@@ -327,113 +338,116 @@
 //       return const Center(child: Text('Please log in to view reports.'));
 //     }
 
-//     return Scaffold(
-//       backgroundColor: Colors.grey[100],
-//       appBar: AppBar(
-//         toolbarHeight: 56,
-//         title: const Text(
-//           'Health Reports',
-//           style: TextStyle(
-//             fontSize: 22,
-//             fontWeight: FontWeight.w600,
-//             color: Colors.white,
+//     return WillPopScope(
+//       onWillPop: _onWillPop, // Intercept system back button
+//       child: Scaffold(
+//         backgroundColor: Colors.grey[100],
+//         appBar: AppBar(
+//           toolbarHeight: 56,
+//           title: const Text(
+//             'Health Reports',
+//             style: TextStyle(
+//               fontSize: 22,
+//               fontWeight: FontWeight.w600,
+//               color: Colors.white,
+//             ),
 //           ),
-//         ),
-//         centerTitle: true,
-//         backgroundColor: Colors.blueAccent,
-//         elevation: 0,
-//         flexibleSpace: Container(
-//           decoration: const BoxDecoration(
-//             gradient: LinearGradient(
-//               colors: [Colors.blueAccent, Colors.lightBlueAccent],
-//               begin: Alignment.topLeft,
-//               end: Alignment.bottomRight,
+//           centerTitle: true,
+//           backgroundColor: Colors.blueAccent,
+//           elevation: 0,
+//           flexibleSpace: Container(
+//             decoration: const BoxDecoration(
+//               gradient: LinearGradient(
+//                 colors: [Colors.blueAccent, Colors.lightBlueAccent],
+//                 begin: Alignment.topLeft,
+//                 end: Alignment.bottomRight,
+//               ),
 //             ),
 //           ),
 //         ),
-//       ),
-//       body:
-//           _isLoading
-//               ? const Center(child: CircularProgressIndicator())
-//               : SingleChildScrollView(
-//                 padding: const EdgeInsets.all(16.0),
-//                 child: Column(
-//                   crossAxisAlignment: CrossAxisAlignment.start,
-//                   children: [
-//                     const SizedBox(height: 24),
-//                     Stack(
-//                       children: [
-//                         InfoCard(
-//                           title: "Heart Rate",
-//                           value: _isFetching ? "Fetching..." : _heartRate,
-//                           unit: "bpm",
-//                           icon: Icons.monitor_heart,
-//                           color: Colors.blue.shade100,
-//                         ),
-//                         if (isPatient)
-//                           Positioned(
-//                             right: 8,
-//                             top: 8,
-//                             child: IconButton(
-//                               icon: const Icon(
-//                                 Icons.refresh,
-//                                 color: Colors.blueAccent,
+//         body:
+//             _isLoading
+//                 ? const Center(child: CircularProgressIndicator())
+//                 : SingleChildScrollView(
+//                   padding: const EdgeInsets.all(16.0),
+//                   child: Column(
+//                     crossAxisAlignment: CrossAxisAlignment.start,
+//                     children: [
+//                       const SizedBox(height: 24),
+//                       Stack(
+//                         children: [
+//                           InfoCard(
+//                             title: "Heart Rate",
+//                             value: _isFetching ? "Fetching..." : _heartRate,
+//                             unit: "bpm",
+//                             icon: Icons.monitor_heart,
+//                             color: Colors.blue.shade100,
+//                           ),
+//                           if (isPatient)
+//                             Positioned(
+//                               right: 8,
+//                               top: 8,
+//                               child: IconButton(
+//                                 icon: const Icon(
+//                                   Icons.refresh,
+//                                   color: Colors.blueAccent,
+//                                 ),
+//                                 onPressed: _autoConnectToBluetooth,
 //                               ),
-//                               onPressed: _autoConnectToBluetooth,
 //                             ),
-//                           ),
-//                       ],
-//                     ),
-//                     const SizedBox(height: 20),
-//                     Row(
-//                       children: [
-//                         Expanded(
-//                           child: GestureDetector(
-//                             onLongPress: _editHealthInfo,
-//                             child: InfoCard(
-//                               title: "Weight",
-//                               value: _weight,
-//                               unit: "lbs",
-//                               icon: Icons.scale,
-//                               color: Colors.grey.shade300,
-//                             ),
-//                           ),
-//                         ),
-//                         const SizedBox(width: 20),
-//                         Expanded(
-//                           child: GestureDetector(
-//                             onLongPress: _editHealthInfo,
-//                             child: InfoCard(
-//                               title: "Blood Group",
-//                               value: _bloodGroup,
-//                               unit: "",
-//                               icon: Icons.water_drop,
-//                               color: Colors.red.shade200,
-//                             ),
-//                           ),
-//                         ),
-//                       ],
-//                     ),
-//                     const SizedBox(height: 30),
-//                     const Text(
-//                       "Latest Reports",
-//                       style: TextStyle(
-//                         fontSize: 20,
-//                         fontWeight: FontWeight.w700,
-//                         color: Colors.blueGrey,
+//                         ],
 //                       ),
-//                     ),
-//                     const SizedBox(height: 12),
-//                     _LatestReportsSection(
-//                       userName: widget.userName,
-//                       docId: _docId,
-//                     ),
-//                   ],
+//                       const SizedBox(height: 20),
+//                       Row(
+//                         children: [
+//                           Expanded(
+//                             child: GestureDetector(
+//                               onLongPress: _editHealthInfo,
+//                               child: InfoCard(
+//                                 title: "Weight",
+//                                 value: _weight,
+//                                 unit: "lbs",
+//                                 icon: Icons.scale,
+//                                 color: Colors.grey.shade300,
+//                               ),
+//                             ),
+//                           ),
+//                           const SizedBox(width: 20),
+//                           Expanded(
+//                             child: GestureDetector(
+//                               onLongPress: _editHealthInfo,
+//                               child: InfoCard(
+//                                 title: "Blood Group",
+//                                 value: _bloodGroup,
+//                                 unit: "",
+//                                 icon: Icons.water_drop,
+//                                 color: Colors.red.shade200,
+//                               ),
+//                             ),
+//                           ),
+//                         ],
+//                       ),
+//                       const SizedBox(height: 30),
+//                       const Text(
+//                         "Latest Reports",
+//                         style: TextStyle(
+//                           fontSize: 20,
+//                           fontWeight: FontWeight.w700,
+//                           color: Colors.blueGrey,
+//                         ),
+//                       ),
+//                       const SizedBox(height: 12),
+//                       _LatestReportsSection(
+//                         userName: widget.userName,
+//                         docId: _docId,
+//                       ),
+//                     ],
+//                   ),
 //                 ),
-//               ),
-//       bottomNavigationBar: CustomBottomNavBar(
-//         currentIndex: _currentIndex,
-//         onTap: _onNavBarTap,
+//         bottomNavigationBar: CustomBottomNavBar(
+//           currentIndex: _currentIndex,
+//           onTap: _onNavBarTap,
+//         ),
 //       ),
 //     );
 //   }
@@ -1065,13 +1079,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_application_pharmacy/home_page.dart';
 import 'package:flutter_application_pharmacy/models/user_model';
 import 'package:flutter_application_pharmacy/screens/health_info_form.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'home_page.dart';
-import 'package:flutter_application_pharmacy/medicine_reminders.dart';
-import 'package:flutter_application_pharmacy/profile_page.dart';
-import 'package:flutter_application_pharmacy/widgets/custom_bottom_nav_bar.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -1092,7 +1103,6 @@ class _ReportsPageState extends State<ReportsPage>
   bool _isFetching = false;
   bool _isLoading = false;
   String? _docId; // Autogenerated docId
-  int _currentIndex = 1; // ReportsPage is index 1
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -1347,39 +1357,6 @@ class _ReportsPageState extends State<ReportsPage>
     ).then((_) => _loadHealthData());
   }
 
-  void _onNavBarTap(int index) {
-    if (index == _currentIndex) return;
-    setState(() => _currentIndex = index);
-    switch (index) {
-      case 0:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => HomePage(userName: widget.userName),
-          ),
-        );
-        break;
-      case 1:
-        break;
-      case 2:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => MedicineReminder(userName: widget.userName),
-          ),
-        );
-        break;
-      case 3:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ProfilePage(userName: widget.userName),
-          ),
-        );
-        break;
-    }
-  }
-
   // Handle system back button to navigate to HomePage
   Future<bool> _onWillPop() async {
     Navigator.pushReplacement(
@@ -1403,7 +1380,7 @@ class _ReportsPageState extends State<ReportsPage>
     }
 
     return WillPopScope(
-      onWillPop: _onWillPop, // Intercept system back button
+      onWillPop: _onWillPop,
       child: Scaffold(
         backgroundColor: Colors.grey[100],
         appBar: AppBar(
@@ -1508,10 +1485,6 @@ class _ReportsPageState extends State<ReportsPage>
                     ],
                   ),
                 ),
-        bottomNavigationBar: CustomBottomNavBar(
-          currentIndex: _currentIndex,
-          onTap: _onNavBarTap,
-        ),
       ),
     );
   }
