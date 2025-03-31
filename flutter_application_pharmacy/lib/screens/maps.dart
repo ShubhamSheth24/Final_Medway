@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_application_pharmacy/models/user_model';
+import '../models/user_model';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -70,17 +70,20 @@ class _AmbulanceBookingScreenState extends State<AmbulanceBookingScreen> {
     } catch (e) {
       print("Error getting location: $e");
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error getting location: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error getting location: $e')));
       }
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
-  Future<void> _fetchAddress(double lat, double lng,
-      {required bool isPickup}) async {
+  Future<void> _fetchAddress(
+    double lat,
+    double lng, {
+    required bool isPickup,
+  }) async {
     final url =
         "https://maps.googleapis.com/maps/api/geocode/json?latlng=$lat,$lng&key=$googleApiKey";
     final response = await http.get(Uri.parse(url));
@@ -98,8 +101,10 @@ class _AmbulanceBookingScreenState extends State<AmbulanceBookingScreen> {
         });
       } else {
         setState(() {
-          if (isPickup) pickupAddress = "No address found";
-          else destinationAddress = "No address found";
+          if (isPickup)
+            pickupAddress = "No address found";
+          else
+            destinationAddress = "No address found";
         });
       }
     } else {
@@ -145,7 +150,8 @@ class _AmbulanceBookingScreenState extends State<AmbulanceBookingScreen> {
           destinationLocation = LatLng(location["lat"], location["lng"]);
           destinationAddress = place;
           _mapController.animateCamera(
-              CameraUpdate.newLatLngZoom(destinationLocation!, 15));
+            CameraUpdate.newLatLngZoom(destinationLocation!, 15),
+          );
           _fetchRoute();
         });
       }
@@ -178,27 +184,29 @@ class _AmbulanceBookingScreenState extends State<AmbulanceBookingScreen> {
               width: 5,
             ),
           };
-          _mapController.animateCamera(CameraUpdate.newLatLngBounds(
-            LatLngBounds(
-              southwest: LatLng(
-                currentLocation.latitude < destinationLocation!.latitude
-                    ? currentLocation.latitude
-                    : destinationLocation!.latitude,
-                currentLocation.longitude < destinationLocation!.longitude
-                    ? currentLocation.longitude
-                    : destinationLocation!.longitude,
+          _mapController.animateCamera(
+            CameraUpdate.newLatLngBounds(
+              LatLngBounds(
+                southwest: LatLng(
+                  currentLocation.latitude < destinationLocation!.latitude
+                      ? currentLocation.latitude
+                      : destinationLocation!.latitude,
+                  currentLocation.longitude < destinationLocation!.longitude
+                      ? currentLocation.longitude
+                      : destinationLocation!.longitude,
+                ),
+                northeast: LatLng(
+                  currentLocation.latitude > destinationLocation!.latitude
+                      ? currentLocation.latitude
+                      : destinationLocation!.latitude,
+                  currentLocation.longitude > destinationLocation!.longitude
+                      ? currentLocation.longitude
+                      : destinationLocation!.longitude,
+                ),
               ),
-              northeast: LatLng(
-                currentLocation.latitude > destinationLocation!.latitude
-                    ? currentLocation.latitude
-                    : destinationLocation!.latitude,
-                currentLocation.longitude > destinationLocation!.longitude
-                    ? currentLocation.longitude
-                    : destinationLocation!.longitude,
-              ),
+              100,
             ),
-            100,
-          ));
+          );
         });
       }
     } else {
@@ -248,20 +256,26 @@ class _AmbulanceBookingScreenState extends State<AmbulanceBookingScreen> {
     setState(() => _isLoading = true);
     try {
       final docId = _generateDocId(user.email ?? "unknown");
-      final bookingId = FirebaseFirestore.instance.collection('bookings').doc().id;
+      final bookingId =
+          FirebaseFirestore.instance.collection('bookings').doc().id;
 
-      await FirebaseFirestore.instance.collection('bookings').doc(bookingId).set({
-        'userDocId': docId,
-        'pickupAddress': pickupAddress,
-        'pickupLat': currentLocation.latitude,
-        'pickupLng': currentLocation.longitude,
-        'destinationAddress': destinationAddress,
-        'destinationLat': destinationLocation!.latitude,
-        'destinationLng': destinationLocation!.longitude,
-        'role': Provider.of<UserModel>(context, listen: false).role ?? 'Patient',
-        'timestamp': FieldValue.serverTimestamp(),
-        'status': 'pending',
-      });
+      await FirebaseFirestore.instance
+          .collection('bookings')
+          .doc(bookingId)
+          .set({
+            'userDocId': docId,
+            'pickupAddress': pickupAddress,
+            'pickupLat': currentLocation.latitude,
+            'pickupLng': currentLocation.longitude,
+            'destinationAddress': destinationAddress,
+            'destinationLat': destinationLocation!.latitude,
+            'destinationLng': destinationLocation!.longitude,
+            'role':
+                Provider.of<UserModel>(context, listen: false).role ??
+                'Patient',
+            'timestamp': FieldValue.serverTimestamp(),
+            'status': 'pending',
+          });
 
       print("Ambulance booked: Booking ID $bookingId");
       if (mounted) {
@@ -273,9 +287,9 @@ class _AmbulanceBookingScreenState extends State<AmbulanceBookingScreen> {
     } catch (e) {
       print("Error booking ambulance: $e");
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error booking ambulance: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error booking ambulance: $e')));
       }
     } finally {
       setState(() => _isLoading = false);
@@ -295,14 +309,20 @@ class _AmbulanceBookingScreenState extends State<AmbulanceBookingScreen> {
           icon: const Icon(Icons.arrow_back, color: Colors.black87),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Book Ambulance', style: TextStyle(color: Colors.black87)),
+        title: const Text(
+          'Book Ambulance',
+          style: TextStyle(color: Colors.black87),
+        ),
         backgroundColor: Colors.blue.shade50,
         elevation: 0,
       ),
       body: Stack(
         children: [
           GoogleMap(
-            initialCameraPosition: CameraPosition(target: currentLocation, zoom: 15),
+            initialCameraPosition: CameraPosition(
+              target: currentLocation,
+              zoom: 15,
+            ),
             myLocationEnabled: true,
             myLocationButtonEnabled: true,
             onMapCreated: (controller) {
@@ -312,13 +332,17 @@ class _AmbulanceBookingScreenState extends State<AmbulanceBookingScreen> {
               Marker(
                 markerId: const MarkerId("currentLocation"),
                 position: currentLocation,
-                icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+                icon: BitmapDescriptor.defaultMarkerWithHue(
+                  BitmapDescriptor.hueBlue,
+                ),
               ),
               if (destinationLocation != null)
                 Marker(
                   markerId: const MarkerId("destination"),
                   position: destinationLocation!,
-                  icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+                  icon: BitmapDescriptor.defaultMarkerWithHue(
+                    BitmapDescriptor.hueRed,
+                  ),
                 ),
             },
             polylines: polylines,
@@ -342,7 +366,9 @@ class _AmbulanceBookingScreenState extends State<AmbulanceBookingScreen> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(30),
-                boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 5)],
+                boxShadow: const [
+                  BoxShadow(color: Colors.black12, blurRadius: 5),
+                ],
               ),
               child: TypeAheadField<String>(
                 suggestionsCallback: (pattern) async {
@@ -379,7 +405,9 @@ class _AmbulanceBookingScreenState extends State<AmbulanceBookingScreen> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(15),
-                boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 5)],
+                boxShadow: const [
+                  BoxShadow(color: Colors.black12, blurRadius: 5),
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -396,7 +424,10 @@ class _AmbulanceBookingScreenState extends State<AmbulanceBookingScreen> {
                       Expanded(
                         child: Text(
                           pickupAddress,
-                          style: const TextStyle(fontSize: 14, color: Colors.black87),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.black87,
+                          ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -407,7 +438,10 @@ class _AmbulanceBookingScreenState extends State<AmbulanceBookingScreen> {
                     const SizedBox(height: 10),
                     const Text(
                       "Destination Address",
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Row(
@@ -417,7 +451,10 @@ class _AmbulanceBookingScreenState extends State<AmbulanceBookingScreen> {
                         Expanded(
                           child: Text(
                             destinationAddress!,
-                            style: const TextStyle(fontSize: 14, color: Colors.black87),
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.black87,
+                            ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -429,15 +466,24 @@ class _AmbulanceBookingScreenState extends State<AmbulanceBookingScreen> {
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                       minimumSize: const Size(double.infinity, 45),
                     ),
-                    onPressed: _isLoading || destinationLocation == null
-                        ? null
-                        : _bookAmbulance,
-                    child: _isLoading
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text("Book Ambulance", style: TextStyle(color: Colors.white)),
+                    onPressed:
+                        _isLoading || destinationLocation == null
+                            ? null
+                            : _bookAmbulance,
+                    child:
+                        _isLoading
+                            ? const CircularProgressIndicator(
+                              color: Colors.white,
+                            )
+                            : const Text(
+                              "Book Ambulance",
+                              style: TextStyle(color: Colors.white),
+                            ),
                   ),
                 ],
               ),

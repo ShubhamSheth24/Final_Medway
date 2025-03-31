@@ -1,4 +1,4 @@
-# flutter_application_pharmacy
+# new_project
 
 A new Flutter project.
 

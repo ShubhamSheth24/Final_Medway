@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter_application_pharmacy/signup.dart';
-
+import 'package:flutter_application_pharmacy/screens/welcome_screen.dart';
 
 class LogoutPage extends StatelessWidget {
   const LogoutPage({super.key});
@@ -13,7 +12,7 @@ class LogoutPage extends StatelessWidget {
 
       // Navigate to WelcomeScreen and remove all previous routes
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const SignUp()),
+        MaterialPageRoute(builder: (context) => const WelcomeScreen()),
         (Route<dynamic> route) => false,
       );
     } catch (e) {
@@ -58,7 +57,9 @@ class LogoutPage extends StatelessWidget {
                     backgroundColor: Colors.red,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 32, vertical: 16),
+                      horizontal: 32,
+                      vertical: 16,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -71,7 +72,9 @@ class LogoutPage extends StatelessWidget {
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: Colors.red),
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 32, vertical: 16),
+                      horizontal: 32,
+                      vertical: 16,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
