@@ -1,7 +1,7 @@
 // import 'package:flutter/material.dart';
 // import 'package:firebase_auth/firebase_auth.dart';
 // import 'package:cloud_firestore/cloud_firestore.dart';
-// import 'home_page.dart';
+// import 'package:flutter_application_pharmacy/main_screen.dart'; // Add this import
 // import 'package:flutter_application_pharmacy/models/user_model';
 // import 'package:flutter_application_pharmacy/screens/doctor_dashboard.dart';
 // import 'package:flutter_application_pharmacy/screens/pharmacist_dashboard.dart';
@@ -255,7 +255,9 @@
 //       default:
 //         Navigator.pushReplacement(
 //           context,
-//           MaterialPageRoute(builder: (context) => HomePage(userName: userName)),
+//           MaterialPageRoute(
+//             builder: (context) => MainScreen(userName: userName),
+//           ), // Changed to MainScreen
 //         );
 //         break;
 //     }
@@ -504,13 +506,15 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_application_pharmacy/main_screen.dart'; // Add this import
+import 'package:flutter_application_pharmacy/doctor_regestration.dart';
+import 'package:flutter_application_pharmacy/main_screen.dart';
 import 'package:flutter_application_pharmacy/models/user_model';
 import 'package:flutter_application_pharmacy/screens/doctor_dashboard.dart';
 import 'package:flutter_application_pharmacy/screens/pharmacist_dashboard.dart';
 import 'package:flutter_application_pharmacy/signup.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_application_pharmacy/doctor_profile.dart';
 
 class SignIn extends StatefulWidget {
   const SignIn({super.key});
@@ -627,7 +631,7 @@ class _SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
         print(
           "Google Sign-In successful: $userName, Role: $userRole, DocId: $docId",
         );
-        _navigateBasedOnRole(userRole, userName);
+        _navigateBasedOnRole(userRole, userName, user.email ?? "No Email");
       }
     } catch (e) {
       print("Google Sign-In Error: $e");
@@ -709,7 +713,7 @@ class _SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
           print(
             "Sign-In successful: $userName, Role: $userRole, DocId: $docId",
           );
-          _navigateBasedOnRole(userRole, userName);
+          _navigateBasedOnRole(userRole, userName, email);
         }
       } on FirebaseAuthException catch (e) {
         String errorMessage = "Sign-in failed";
@@ -720,30 +724,53 @@ class _SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
         }
         print("Sign-In Error: $e");
         if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(errorMessage)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage)),
+        );
       } catch (e) {
         print("Unexpected Sign-In Error: $e");
         if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Error: $e")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error: $e")),
+        );
       } finally {
         if (mounted) setState(() => _isLoading = false);
       }
     }
   }
 
-  void _navigateBasedOnRole(String? role, String userName) {
+  Future<void> _navigateBasedOnRole(
+      String? role, String userName, String email) async {
     switch (role) {
       case "Doctor":
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => DoctorDashboard(userName: userName),
-          ),
-        );
+        // Check if doctor already exists in the 'doctors' collection
+        QuerySnapshot doctorQuery = await _firestore
+            .collection('doctors')
+            .where('email', isEqualTo: email)
+            .limit(1)
+            .get();
+
+        if (doctorQuery.docs.isNotEmpty) {
+          // Doctor already registered, go to profile page
+          String doctorId = doctorQuery.docs.first.id;
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => DoctorProfilePage(doctorId: doctorId),
+            ),
+          );
+        } else {
+          // Doctor not registered, go to registration page with email
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => DoctorRegistrationPage(
+                userName: userName,
+                email: email,
+              ),
+            ),
+          );
+        }
         break;
       case "Pharmacist":
         Navigator.pushReplacement(
@@ -760,7 +787,7 @@ class _SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
           context,
           MaterialPageRoute(
             builder: (context) => MainScreen(userName: userName),
-          ), // Changed to MainScreen
+          ),
         );
         break;
     }
@@ -843,10 +870,8 @@ class _SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
                             : Icons.visibility_off,
                         color: Colors.grey,
                       ),
-                      onPressed:
-                          () => setState(
-                            () => passwordVisible = !passwordVisible,
-                          ),
+                      onPressed: () =>
+                          setState(() => passwordVisible = !passwordVisible),
                     ),
                   ),
                   const SizedBox(height: 30),
@@ -862,23 +887,22 @@ class _SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
                         ),
                         elevation: 4,
                       ),
-                      child:
-                          _isLoading
-                              ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                ),
-                              )
-                              : const Text(
-                                'Sign In',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
                               ),
+                            )
+                          : const Text(
+                              'Sign In',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -890,13 +914,12 @@ class _SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
                         style: TextStyle(color: Colors.grey, fontSize: 16),
                       ),
                       GestureDetector(
-                        onTap:
-                            () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const SignUp(),
-                              ),
-                            ),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const SignUp(),
+                          ),
+                        ),
                         child: const Text(
                           'Sign up',
                           style: TextStyle(

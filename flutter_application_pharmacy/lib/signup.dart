@@ -84,14 +84,14 @@ class _SignUpState extends State<SignUp> with SingleTickerProviderStateMixin {
             'patientIds': [],
             'emergencyContact': null,
           }, SetOptions(merge: true));
-        } else if (selectedRole == 'Doctor') {
-          await _firestore.collection('doctors').doc(docId).set({
-            'name': name,
-            'specialty': '',
-            'location': '',
-            'timeSlots': [],
-            'email': email,
-          }, SetOptions(merge: true));
+          // } else if (selectedRole == 'Doctor') {
+          //   await _firestore.collection('doctors').doc(docId).set({
+          //     'name': name,
+          //     'specialty': '',
+          //     'location': '',
+          //     'timeSlots': [],
+          //     'email': email,
+          //   }, SetOptions(merge: true));
         } else if (selectedRole == 'Pharmacist') {
           await _firestore.collection('pharmacies').doc(docId).set({
             'name': '',

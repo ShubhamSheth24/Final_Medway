@@ -1,6 +1,7 @@
 // import 'package:flutter/material.dart';
 // import 'package:firebase_auth/firebase_auth.dart';
 // import 'package:cloud_firestore/cloud_firestore.dart';
+// import 'package:flutter_application_pharmacy/home_page.dart';
 // import 'package:flutter_application_pharmacy/models/user_model';
 // import 'package:flutter_application_pharmacy/screens/faqs_page.dart';
 // import 'package:flutter_application_pharmacy/screens/logout_page.dart';
@@ -11,10 +12,6 @@
 // import 'package:provider/provider.dart';
 // import 'package:shared_preferences/shared_preferences.dart';
 // import 'package:flutter/services.dart'; // For Clipboard
-// import 'home_page.dart';
-// import 'reports.dart';
-// import 'medicine_reminders.dart';
-// import 'package:flutter_application_pharmacy/widgets/custom_bottom_nav_bar.dart';
 
 // const defaultPadding = EdgeInsets.symmetric(horizontal: 16);
 
@@ -37,7 +34,6 @@
 //   final ImagePicker _picker = ImagePicker();
 //   final TextEditingController _docIdController = TextEditingController();
 //   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-//   int _currentIndex = 3; // ProfilePage is index 3
 
 //   late AnimationController _animationController;
 //   late Animation<double> _fadeAnimation;
@@ -270,45 +266,49 @@
 //     }
 //   }
 
+//   Future<void> _unlinkCaretaker() async {
+//     final user = FirebaseAuth.instance.currentUser;
+//     if (user == null ||
+//         _docId == null ||
+//         _linkedDocId == null ||
+//         _linkedDocId!.isEmpty) {
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         const SnackBar(content: Text('No caretaker linked to unlink')),
+//       );
+//       return;
+//     }
+
+//     setState(() => _isLoading = true);
+//     try {
+//       // Remove linkedDocId from patient's document
+//       await _firestore.collection('users').doc(_docId).update({
+//         'linkedDocId': FieldValue.delete(),
+//       });
+//       // Remove linkedDocId from caretaker's document
+//       await _firestore.collection('users').doc(_linkedDocId).update({
+//         'linkedDocId': FieldValue.delete(),
+//       });
+//       setState(() {
+//         _linkedDocId = '';
+//       });
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         const SnackBar(content: Text('Caretaker unlinked successfully')),
+//       );
+//     } catch (e) {
+//       print("Error unlinking caretaker: $e");
+//       ScaffoldMessenger.of(
+//         context,
+//       ).showSnackBar(SnackBar(content: Text('Error unlinking caretaker: $e')));
+//     } finally {
+//       setState(() => _isLoading = false);
+//     }
+//   }
+
 //   void _copyDocIdToClipboard(String docId) {
 //     Clipboard.setData(ClipboardData(text: docId));
 //     ScaffoldMessenger.of(context).showSnackBar(
 //       const SnackBar(content: Text('Doc ID copied to clipboard!')),
 //     );
-//   }
-
-//   void _onNavBarTap(int index) {
-//     if (index == _currentIndex) return;
-//     setState(() => _currentIndex = index);
-//     switch (index) {
-//       case 0:
-//         Navigator.pushReplacement(
-//           context,
-//           MaterialPageRoute(
-//             builder: (context) => HomePage(userName: widget.userName),
-//           ),
-//         );
-//         break;
-//       case 1:
-//         Navigator.pushReplacement(
-//           context,
-//           MaterialPageRoute(
-//             builder: (context) => ReportsPage(userName: widget.userName),
-//           ),
-//         );
-//         break;
-//       case 2:
-//         Navigator.pushReplacement(
-//           context,
-//           MaterialPageRoute(
-//             builder: (context) => MedicineReminder(userName: widget.userName),
-//           ),
-//         );
-//         break;
-//       case 3:
-//         // Already on ProfilePage, no navigation needed
-//         break;
-//     }
 //   }
 
 //   // Handle system back button to navigate to HomePage
@@ -330,7 +330,7 @@
 //     final isCaretaker = userModel.role == 'Caretaker';
 
 //     return WillPopScope(
-//       onWillPop: _onWillPop, // Intercept system back button
+//       onWillPop: _onWillPop,
 //       child: Scaffold(
 //         backgroundColor: Colors.white,
 //         body:
@@ -595,14 +595,20 @@
 //                             ),
 //                           ),
 //                         ),
+//                         if (isPatient &&
+//                             _linkedDocId != null &&
+//                             _linkedDocId!.isNotEmpty)
+//                           _buildProfileOption(
+//                             context,
+//                             "Unlink Caretaker",
+//                             Icons.link_off,
+//                             Colors.blueGrey,
+//                             _unlinkCaretaker,
+//                           ),
 //                       ],
 //                     ),
 //                   ),
 //                 ),
-//         bottomNavigationBar: CustomBottomNavBar(
-//           currentIndex: _currentIndex,
-//           onTap: _onNavBarTap,
-//         ),
 //       ),
 //     );
 //   }
@@ -890,6 +896,87 @@ class _ProfilePageState extends State<ProfilePage>
       ).showSnackBar(SnackBar(content: Text('Error uploading image: $e')));
     } finally {
       setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _uploadMedicalRecord() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null ||
+        _docId == null ||
+        _linkedDocId == null ||
+        _linkedDocId!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please link to a patient to upload a medical record'),
+        ),
+      );
+      return;
+    }
+
+    final permissionStatus = await Permission.photos.request();
+    if (permissionStatus.isGranted) {
+      try {
+        final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+        if (pickedFile != null) {
+          setState(() => _selectedImage = File(pickedFile.path));
+          setState(() => _isLoading = true);
+          try {
+            final storageRef = FirebaseStorage.instance.ref().child(
+              'medical_records/$_linkedDocId/${DateTime.now().millisecondsSinceEpoch}.jpg',
+            );
+            final uploadTask = storageRef.putFile(_selectedImage!);
+            final snapshot = await uploadTask;
+            final downloadUrl = await snapshot.ref.getDownloadURL();
+
+            // Fetch the patient's document safely
+            DocumentSnapshot patientDoc =
+                await _firestore.collection('users').doc(_linkedDocId).get();
+            final patientData =
+                patientDoc.exists
+                    ? patientDoc.data() as Map<String, dynamic>?
+                    : null;
+            List<dynamic> existingRecords =
+                patientData != null &&
+                        patientData.containsKey('medicalRecordUrls')
+                    ? List.from(patientData['medicalRecordUrls'])
+                    : [];
+            existingRecords.add(downloadUrl);
+
+            // Store the updated list in the patient's document
+            await _firestore.collection('users').doc(_linkedDocId).set({
+              'medicalRecordUrls': existingRecords,
+            }, SetOptions(merge: true));
+
+            setState(() {
+              _selectedImage = null;
+              // Trigger UI refresh to ensure patient sees the update immediately
+            });
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Medical record uploaded successfully!'),
+              ),
+            );
+          } catch (e) {
+            print("Error uploading medical record: $e");
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error uploading medical record: $e')),
+            );
+          } finally {
+            setState(() => _isLoading = false);
+          }
+        }
+      } catch (e) {
+        print("Error picking medical record: $e");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error picking medical record: $e')),
+        );
+      }
+    } else {
+      print("Gallery permission denied");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Gallery permission denied')),
+      );
     }
   }
 
@@ -1282,6 +1369,128 @@ class _ProfilePageState extends State<ProfilePage>
                             Colors.blueGrey,
                             _unlinkCaretaker,
                           ),
+                        if (isPatient ||
+                            isCaretaker) // Show for both, with different behavior
+                          _buildProfileOption(
+                            context,
+                            "Upload Medical Record",
+                            Icons.upload_file,
+                            Colors.green,
+                            () async {
+                              if (isCaretaker &&
+                                  _linkedDocId != null &&
+                                  _linkedDocId!.isNotEmpty) {
+                                await _uploadMedicalRecord();
+                              }
+                              // No action for patients; they just see the records
+                            },
+                            additionalContent: FutureBuilder<DocumentSnapshot>(
+                              future:
+                                  _firestore
+                                      .collection('users')
+                                      .doc(_linkedDocId ?? _docId)
+                                      .get(),
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState ==
+                                    ConnectionState.waiting) {
+                                  return const Padding(
+                                    padding: EdgeInsets.all(8.0),
+                                    child: CircularProgressIndicator(),
+                                  );
+                                }
+                                if (!snapshot.hasData ||
+                                    snapshot.hasError ||
+                                    !snapshot.data!.exists) {
+                                  return const Padding(
+                                    padding: EdgeInsets.all(8.0),
+                                    child: Text('No medical records available'),
+                                  );
+                                }
+                                final data =
+                                    snapshot.data!.data()
+                                        as Map<String, dynamic>?;
+                                List<dynamic> medicalRecordUrls =
+                                    data != null &&
+                                            data.containsKey(
+                                              'medicalRecordUrls',
+                                            )
+                                        ? List.from(data['medicalRecordUrls'])
+                                        : [];
+                                if (medicalRecordUrls.isEmpty) {
+                                  return const Padding(
+                                    padding: EdgeInsets.all(8.0),
+                                    child: Text(
+                                      'No medical records uploaded yet',
+                                    ),
+                                  );
+                                }
+                                return Column(
+                                  children:
+                                      medicalRecordUrls.map((url) {
+                                        return Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 4.0,
+                                          ),
+                                          child: GestureDetector(
+                                            onTap: () {
+                                              showDialog(
+                                                context: context,
+                                                builder:
+                                                    (context) => Dialog(
+                                                      child: Column(
+                                                        mainAxisSize:
+                                                            MainAxisSize.min,
+                                                        children: [
+                                                          Image.network(
+                                                            url,
+                                                            fit: BoxFit.contain,
+                                                            errorBuilder: (
+                                                              context,
+                                                              error,
+                                                              stackTrace,
+                                                            ) {
+                                                              return const Text(
+                                                                'Error loading image',
+                                                              );
+                                                            },
+                                                          ),
+                                                          TextButton(
+                                                            onPressed:
+                                                                () =>
+                                                                    Navigator.pop(
+                                                                      context,
+                                                                    ),
+                                                            child: const Text(
+                                                              'Close',
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                              );
+                                            },
+                                            child: Image.network(
+                                              url,
+                                              height: 100,
+                                              width: double.infinity,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (
+                                                context,
+                                                error,
+                                                stackTrace,
+                                              ) {
+                                                return const Text(
+                                                  'Error loading image',
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
+                                );
+                              },
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -1316,8 +1525,9 @@ class _ProfilePageState extends State<ProfilePage>
     String title,
     IconData icon,
     Color color,
-    VoidCallback onTap,
-  ) {
+    VoidCallback onTap, {
+    Widget? additionalContent,
+  }) {
     return FadeTransition(
       opacity: _fadeAnimation,
       child: Card(
@@ -1325,7 +1535,7 @@ class _ProfilePageState extends State<ProfilePage>
         margin: const EdgeInsets.symmetric(vertical: 8),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         color: Colors.grey.shade50,
-        child: ListTile(
+        child: ExpansionTile(
           leading: Icon(icon, color: color, size: 24),
           title: Text(
             title,
@@ -1340,7 +1550,10 @@ class _ProfilePageState extends State<ProfilePage>
             size: 16,
             color: Colors.grey,
           ),
-          onTap: onTap,
+          onExpansionChanged: (expanded) {
+            if (expanded) onTap();
+          },
+          children: additionalContent != null ? [additionalContent] : [],
         ),
       ),
     );
