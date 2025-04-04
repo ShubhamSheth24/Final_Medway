@@ -509,7 +509,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_application_pharmacy/doctor_regestration.dart';
 import 'package:flutter_application_pharmacy/main_screen.dart';
 import 'package:flutter_application_pharmacy/models/user_model';
-import 'package:flutter_application_pharmacy/screens/doctor_dashboard.dart';
 import 'package:flutter_application_pharmacy/screens/pharmacist_dashboard.dart';
 import 'package:flutter_application_pharmacy/signup.dart';
 import 'package:google_sign_in/google_sign_in.dart';

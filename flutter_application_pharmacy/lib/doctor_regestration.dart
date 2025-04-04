@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'doctor_profile.dart';
+import 'package:intl/intl.dart';
 
 class DoctorRegistrationPage extends StatefulWidget {
   final String userName;
@@ -51,6 +52,10 @@ class _DoctorRegistrationPageState extends State<DoctorRegistrationPage> {
   ];
   List<bool> slotSelection = List.generate(12, (index) => false);
 
+  // Calendar-related fields
+  DateTime _currentMonth = DateTime.now();
+  List<DateTime> _selectedDates = [];
+
   bool _isLoading = false;
 
   Future<void> registerDoctor() async {
@@ -83,6 +88,20 @@ class _DoctorRegistrationPageState extends State<DoctorRegistrationPage> {
         return;
       }
 
+      if (_selectedDates.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text("Please select at least one available date"),
+            backgroundColor: Colors.red[700],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        );
+        return;
+      }
+
       setState(() => _isLoading = true);
 
       List<Map<String, dynamic>> availableSlots = [];
@@ -100,11 +119,10 @@ class _DoctorRegistrationPageState extends State<DoctorRegistrationPage> {
       }
 
       try {
-        // Add doctor to Firestore and get the document reference
         DocumentReference docRef = await FirebaseFirestore.instance
             .collection('doctors')
             .add({
-              "email": widget.email, // Use the email passed from SignIn
+              "email": widget.email,
               "fullName": _fullNameController.text.trim(),
               "specialty": _specialtyController.text.trim(),
               "location": _locationController.text.trim(),
@@ -112,6 +130,10 @@ class _DoctorRegistrationPageState extends State<DoctorRegistrationPage> {
               "mobile": _mobileController.text.trim(),
               "availableDays": selectedDays,
               "availableSlots": availableSlots,
+              "availableDates":
+                  _selectedDates
+                      .map((date) => date.toIso8601String())
+                      .toList(), // Store selected dates
               "createdAt": FieldValue.serverTimestamp(),
             });
 
@@ -135,7 +157,6 @@ class _DoctorRegistrationPageState extends State<DoctorRegistrationPage> {
 
         _clearForm();
 
-        // Navigate to DoctorProfilePage with the new doctor's ID
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -168,6 +189,7 @@ class _DoctorRegistrationPageState extends State<DoctorRegistrationPage> {
     setState(() {
       daySelection = List.generate(7, (index) => false);
       slotSelection = List.generate(12, (index) => false);
+      _selectedDates = [];
     });
   }
 
@@ -340,6 +362,14 @@ class _DoctorRegistrationPageState extends State<DoctorRegistrationPage> {
                               onTap: () {
                                 setState(() {
                                   daySelection[index] = !daySelection[index];
+                                  // Reset dates if days change
+                                  if (!daySelection[index]) {
+                                    _selectedDates.removeWhere(
+                                      (date) =>
+                                          DateFormat('EEEE').format(date) ==
+                                          allDays[index],
+                                    );
+                                  }
                                 });
                               },
                               child: AnimatedContainer(
@@ -376,6 +406,17 @@ class _DoctorRegistrationPageState extends State<DoctorRegistrationPage> {
                             );
                           }),
                         ),
+                        const SizedBox(height: 24),
+                        Text(
+                          "Select Available Dates",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.grey[800],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildCalendar(),
                         const SizedBox(height: 24),
                         Text(
                           "Select Available Time Slots",
@@ -542,6 +583,161 @@ class _DoctorRegistrationPageState extends State<DoctorRegistrationPage> {
       ),
       validator: validator,
       style: TextStyle(color: Colors.grey[800], fontWeight: FontWeight.w500),
+    );
+  }
+
+  Widget _buildCalendar() {
+    final firstDayOfMonth = DateTime(
+      _currentMonth.year,
+      _currentMonth.month,
+      1,
+    );
+    final daysInMonth =
+        DateTime(_currentMonth.year, _currentMonth.month + 1, 0).day;
+    final firstDayWeekday = firstDayOfMonth.weekday % 7; // Sunday as 0
+
+    List<String> selectedDays = [];
+    for (int i = 0; i < allDays.length; i++) {
+      if (daySelection[i]) {
+        selectedDays.add(allDays[i]);
+      }
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back_ios, size: 16),
+                onPressed: () {
+                  setState(() {
+                    _currentMonth = DateTime(
+                      _currentMonth.year,
+                      _currentMonth.month - 1,
+                      1,
+                    );
+                  });
+                },
+              ),
+              Text(
+                DateFormat('MMMM yyyy').format(_currentMonth),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.arrow_forward_ios, size: 16),
+                onPressed: () {
+                  setState(() {
+                    _currentMonth = DateTime(
+                      _currentMonth.year,
+                      _currentMonth.month + 1,
+                      1,
+                    );
+                  });
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: const [
+              Text('Sun', style: TextStyle(fontWeight: FontWeight.w500)),
+              Text('Mon', style: TextStyle(fontWeight: FontWeight.w500)),
+              Text('Tue', style: TextStyle(fontWeight: FontWeight.w500)),
+              Text('Wed', style: TextStyle(fontWeight: FontWeight.w500)),
+              Text('Thu', style: TextStyle(fontWeight: FontWeight.w500)),
+              Text('Fri', style: TextStyle(fontWeight: FontWeight.w500)),
+              Text('Sat', style: TextStyle(fontWeight: FontWeight.w500)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: List.generate(firstDayWeekday + daysInMonth, (index) {
+              if (index < firstDayWeekday) {
+                return const SizedBox(width: 40, height: 40);
+              }
+              final day = index - firstDayWeekday + 1;
+              final currentDate = DateTime(
+                _currentMonth.year,
+                _currentMonth.month,
+                day,
+              );
+              final dayName = DateFormat('EEEE').format(currentDate);
+              final isSelectable = selectedDays.contains(dayName);
+              final isSelected = _selectedDates.any(
+                (d) =>
+                    d.day == currentDate.day &&
+                    d.month == currentDate.month &&
+                    d.year == currentDate.year,
+              );
+
+              return GestureDetector(
+                onTap:
+                    isSelectable
+                        ? () {
+                          setState(() {
+                            if (isSelected) {
+                              _selectedDates.removeWhere(
+                                (d) =>
+                                    d.day == currentDate.day &&
+                                    d.month == currentDate.month &&
+                                    d.year == currentDate.year,
+                              );
+                            } else {
+                              _selectedDates.add(currentDate);
+                            }
+                          });
+                        }
+                        : null,
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: isSelected ? Colors.blue[500] : Colors.transparent,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color:
+                          isSelectable ? Colors.grey[400]! : Colors.grey[200]!,
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '$day',
+                      style: TextStyle(
+                        color:
+                            isSelected
+                                ? Colors.white
+                                : isSelectable
+                                ? Colors.black
+                                : Colors.grey[400],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Selected Dates: ${_selectedDates.map((d) => DateFormat('MMM d, yyyy').format(d)).join(', ')}',
+            style: const TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+        ],
+      ),
     );
   }
 }

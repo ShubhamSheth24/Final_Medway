@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:intl/intl.dart';
 
 class DoctorProfilePage extends StatefulWidget {
   final String doctorId;
@@ -46,7 +47,6 @@ class _DoctorProfilePageState extends State<DoctorProfilePage>
     super.dispose();
   }
 
-  // 📸 Pick an image from gallery (from your UploadImageScreen.dart)
   Future pickImage() async {
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
@@ -55,7 +55,6 @@ class _DoctorProfilePageState extends State<DoctorProfilePage>
     }
   }
 
-  // 📤 Upload image to Firebase Storage (from your UploadImageScreen.dart)
   Future uploadImage() async {
     if (_image == null) return;
 
@@ -68,10 +67,9 @@ class _DoctorProfilePageState extends State<DoctorProfilePage>
     TaskSnapshot taskSnapshot = await uploadTask.whenComplete(() => null);
     String downloadUrl = await taskSnapshot.ref.getDownloadURL();
 
-    // Update Firestore with the image URL
     await _updateDoctorField({"profileImageUrl": downloadUrl});
     setState(() {
-      _image = null; // Clear the local image after upload
+      _image = null;
     });
   }
 
@@ -246,9 +244,9 @@ class _DoctorProfilePageState extends State<DoctorProfilePage>
       "8:00 PM",
     ];
     List<bool> slotSelection =
-        allSlots.map((slot) {
-          return currentSlots.any((s) => s['time'] == slot);
-        }).toList();
+        allSlots
+            .map((slot) => currentSlots.any((s) => s['time'] == slot))
+            .toList();
 
     showDialog(
       context: context,
@@ -303,6 +301,244 @@ class _DoctorProfilePageState extends State<DoctorProfilePage>
     );
   }
 
+  void _editAvailableDates(
+    List<String> currentDates,
+    List<String> availableDays,
+  ) {
+    List<DateTime> selectedDates =
+        currentDates.map((date) => DateTime.parse(date)).toList();
+    DateTime currentMonth = DateTime.now();
+
+    showDialog(
+      context: context,
+      builder:
+          (context) => StatefulBuilder(
+            builder:
+                (context, setState) => AlertDialog(
+                  title: const Text("Edit Available Dates"),
+                  content: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey[300]!),
+                          ),
+                          child: Column(
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.arrow_back_ios,
+                                      size: 16,
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        currentMonth = DateTime(
+                                          currentMonth.year,
+                                          currentMonth.month - 1,
+                                          1,
+                                        );
+                                      });
+                                    },
+                                  ),
+                                  Text(
+                                    DateFormat(
+                                      'MMMM yyyy',
+                                    ).format(currentMonth),
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.arrow_forward_ios,
+                                      size: 16,
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        currentMonth = DateTime(
+                                          currentMonth.year,
+                                          currentMonth.month + 1,
+                                          1,
+                                        );
+                                      });
+                                    },
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: const [
+                                  Text(
+                                    'Sun',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Mon',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Tue',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Wed',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Thu',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Fri',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Sat',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              _buildCalendar(
+                                currentMonth,
+                                selectedDates,
+                                availableDays,
+                                setState,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text("Cancel"),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        _updateDoctorField({
+                          "availableDates":
+                              selectedDates
+                                  .map((date) => date.toIso8601String())
+                                  .toList(),
+                        });
+                        Navigator.pop(context);
+                      },
+                      child: const Text("Save"),
+                    ),
+                  ],
+                ),
+          ),
+    );
+  }
+
+  Widget _buildCalendar(
+    DateTime currentMonth,
+    List<DateTime> selectedDates,
+    List<String> availableDays,
+    StateSetter setState,
+  ) {
+    final firstDayOfMonth = DateTime(currentMonth.year, currentMonth.month, 1);
+    final daysInMonth =
+        DateTime(currentMonth.year, currentMonth.month + 1, 0).day;
+    final firstDayWeekday = firstDayOfMonth.weekday % 7;
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: List.generate(firstDayWeekday + daysInMonth, (index) {
+        if (index < firstDayWeekday) {
+          return const SizedBox(width: 40, height: 40);
+        }
+        final day = index - firstDayWeekday + 1;
+        final currentDate = DateTime(
+          currentMonth.year,
+          currentMonth.month,
+          day,
+        );
+        final dayName = DateFormat('EEEE').format(currentDate);
+        final isSelectable = availableDays.contains(dayName);
+        final isSelected = selectedDates.any(
+          (d) =>
+              d.day == currentDate.day &&
+              d.month == currentDate.month &&
+              d.year == currentDate.year,
+        );
+
+        return GestureDetector(
+          onTap:
+              isSelectable
+                  ? () {
+                    setState(() {
+                      if (isSelected) {
+                        selectedDates.removeWhere(
+                          (d) =>
+                              d.day == currentDate.day &&
+                              d.month == currentDate.month &&
+                              d.year == currentDate.year,
+                        );
+                      } else {
+                        selectedDates.add(currentDate);
+                      }
+                    });
+                  }
+                  : null,
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: isSelected ? Colors.blue[500] : Colors.transparent,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isSelectable ? Colors.grey[400]! : Colors.grey[200]!,
+              ),
+            ),
+            child: Center(
+              child: Text(
+                '$day',
+                style: TextStyle(
+                  color:
+                      isSelected
+                          ? Colors.white
+                          : isSelectable
+                          ? Colors.black
+                          : Colors.grey[400],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -345,12 +581,15 @@ class _DoctorProfilePageState extends State<DoctorProfilePage>
           List<String> availableDays = List<String>.from(data['availableDays']);
           List<dynamic> availableSlots = data['availableSlots'];
           String? profileImageUrl = data['profileImageUrl'];
+          List<String> availableDates =
+              data['availableDates'] != null
+                  ? List<String>.from(data['availableDates'])
+                  : [];
 
           return SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Profile Header
                 Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
@@ -374,7 +613,7 @@ class _DoctorProfilePageState extends State<DoctorProfilePage>
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       GestureDetector(
-                        onTap: pickImage, // Trigger image picker on tap
+                        onTap: pickImage,
                         child: ScaleTransition(
                           scale: _scaleAnimation,
                           child: Container(
@@ -433,7 +672,6 @@ class _DoctorProfilePageState extends State<DoctorProfilePage>
                     ],
                   ),
                 ),
-                // Doctor Info Section
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Card(
@@ -484,7 +722,6 @@ class _DoctorProfilePageState extends State<DoctorProfilePage>
                     ),
                   ),
                 ),
-                // Available Days Section
                 Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16.0,
@@ -551,7 +788,78 @@ class _DoctorProfilePageState extends State<DoctorProfilePage>
                     ),
                   ),
                 ),
-                // Available Slots Section
+                // New Available Dates Section
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 8,
+                  ),
+                  child: Card(
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(20.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                "Available Dates",
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue[900],
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.edit, size: 20),
+                                color: Colors.blue[700],
+                                onPressed:
+                                    () => _editAvailableDates(
+                                      availableDates,
+                                      availableDays,
+                                    ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          Wrap(
+                            spacing: 10.0,
+                            runSpacing: 10.0,
+                            children:
+                                availableDates.map((date) {
+                                  return Chip(
+                                    label: Text(
+                                      DateFormat(
+                                        'MMM d, yyyy',
+                                      ).format(DateTime.parse(date)),
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    backgroundColor: Colors.blue[700],
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    elevation: 2,
+                                  );
+                                }).toList(),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
                 Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16.0,
