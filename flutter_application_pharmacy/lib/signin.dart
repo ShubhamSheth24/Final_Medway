@@ -1,13 +1,14 @@
 // import 'package:flutter/material.dart';
 // import 'package:firebase_auth/firebase_auth.dart';
 // import 'package:cloud_firestore/cloud_firestore.dart';
-// import 'package:flutter_application_pharmacy/main_screen.dart'; // Add this import
+// import 'package:flutter_application_pharmacy/doctor_regestration.dart';
+// import 'package:flutter_application_pharmacy/main_screen.dart';
 // import 'package:flutter_application_pharmacy/models/user_model';
-// import 'package:flutter_application_pharmacy/screens/doctor_dashboard.dart';
 // import 'package:flutter_application_pharmacy/screens/pharmacist_dashboard.dart';
 // import 'package:flutter_application_pharmacy/signup.dart';
 // import 'package:google_sign_in/google_sign_in.dart';
 // import 'package:provider/provider.dart';
+// import 'package:flutter_application_pharmacy/doctor_profile.dart';
 
 // class SignIn extends StatefulWidget {
 //   const SignIn({super.key});
@@ -124,7 +125,7 @@
 //         print(
 //           "Google Sign-In successful: $userName, Role: $userRole, DocId: $docId",
 //         );
-//         _navigateBasedOnRole(userRole, userName);
+//         _navigateBasedOnRole(userRole, userName, user.email ?? "No Email");
 //       }
 //     } catch (e) {
 //       print("Google Sign-In Error: $e");
@@ -206,7 +207,7 @@
 //           print(
 //             "Sign-In successful: $userName, Role: $userRole, DocId: $docId",
 //           );
-//           _navigateBasedOnRole(userRole, userName);
+//           _navigateBasedOnRole(userRole, userName, email);
 //         }
 //       } on FirebaseAuthException catch (e) {
 //         String errorMessage = "Sign-in failed";
@@ -217,30 +218,53 @@
 //         }
 //         print("Sign-In Error: $e");
 //         if (!mounted) return;
-//         ScaffoldMessenger.of(
-//           context,
-//         ).showSnackBar(SnackBar(content: Text(errorMessage)));
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           SnackBar(content: Text(errorMessage)),
+//         );
 //       } catch (e) {
 //         print("Unexpected Sign-In Error: $e");
 //         if (!mounted) return;
-//         ScaffoldMessenger.of(
-//           context,
-//         ).showSnackBar(SnackBar(content: Text("Error: $e")));
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           SnackBar(content: Text("Error: $e")),
+//         );
 //       } finally {
 //         if (mounted) setState(() => _isLoading = false);
 //       }
 //     }
 //   }
 
-//   void _navigateBasedOnRole(String? role, String userName) {
+//   Future<void> _navigateBasedOnRole(
+//       String? role, String userName, String email) async {
 //     switch (role) {
 //       case "Doctor":
-//         Navigator.pushReplacement(
-//           context,
-//           MaterialPageRoute(
-//             builder: (context) => DoctorDashboard(userName: userName),
-//           ),
-//         );
+//         // Check if doctor already exists in the 'doctors' collection
+//         QuerySnapshot doctorQuery = await _firestore
+//             .collection('doctors')
+//             .where('email', isEqualTo: email)
+//             .limit(1)
+//             .get();
+
+//         if (doctorQuery.docs.isNotEmpty) {
+//           // Doctor already registered, go to profile page
+//           String doctorId = doctorQuery.docs.first.id;
+//           Navigator.pushReplacement(
+//             context,
+//             MaterialPageRoute(
+//               builder: (context) => DoctorProfilePage(doctorId: doctorId),
+//             ),
+//           );
+//         } else {
+//           // Doctor not registered, go to registration page with email
+//           Navigator.pushReplacement(
+//             context,
+//             MaterialPageRoute(
+//               builder: (context) => DoctorRegistrationPage(
+//                 userName: userName,
+//                 email: email,
+//               ),
+//             ),
+//           );
+//         }
 //         break;
 //       case "Pharmacist":
 //         Navigator.pushReplacement(
@@ -257,7 +281,7 @@
 //           context,
 //           MaterialPageRoute(
 //             builder: (context) => MainScreen(userName: userName),
-//           ), // Changed to MainScreen
+//           ),
 //         );
 //         break;
 //     }
@@ -340,10 +364,8 @@
 //                             : Icons.visibility_off,
 //                         color: Colors.grey,
 //                       ),
-//                       onPressed:
-//                           () => setState(
-//                             () => passwordVisible = !passwordVisible,
-//                           ),
+//                       onPressed: () =>
+//                           setState(() => passwordVisible = !passwordVisible),
 //                     ),
 //                   ),
 //                   const SizedBox(height: 30),
@@ -359,23 +381,22 @@
 //                         ),
 //                         elevation: 4,
 //                       ),
-//                       child:
-//                           _isLoading
-//                               ? const SizedBox(
-//                                 width: 20,
-//                                 height: 20,
-//                                 child: CircularProgressIndicator(
-//                                   color: Colors.white,
-//                                 ),
-//                               )
-//                               : const Text(
-//                                 'Sign In',
-//                                 style: TextStyle(
-//                                   color: Colors.white,
-//                                   fontSize: 18,
-//                                   fontWeight: FontWeight.bold,
-//                                 ),
+//                       child: _isLoading
+//                           ? const SizedBox(
+//                               width: 20,
+//                               height: 20,
+//                               child: CircularProgressIndicator(
+//                                 color: Colors.white,
 //                               ),
+//                             )
+//                           : const Text(
+//                               'Sign In',
+//                               style: TextStyle(
+//                                 color: Colors.white,
+//                                 fontSize: 18,
+//                                 fontWeight: FontWeight.bold,
+//                               ),
+//                             ),
 //                     ),
 //                   ),
 //                   const SizedBox(height: 20),
@@ -387,13 +408,12 @@
 //                         style: TextStyle(color: Colors.grey, fontSize: 16),
 //                       ),
 //                       GestureDetector(
-//                         onTap:
-//                             () => Navigator.push(
-//                               context,
-//                               MaterialPageRoute(
-//                                 builder: (context) => const SignUp(),
-//                               ),
-//                             ),
+//                         onTap: () => Navigator.push(
+//                           context,
+//                           MaterialPageRoute(
+//                             builder: (context) => const SignUp(),
+//                           ),
+//                         ),
 //                         child: const Text(
 //                           'Sign up',
 //                           style: TextStyle(
@@ -509,11 +529,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_application_pharmacy/doctor_regestration.dart';
 import 'package:flutter_application_pharmacy/main_screen.dart';
 import 'package:flutter_application_pharmacy/models/user_model';
-import 'package:flutter_application_pharmacy/screens/pharmacist_dashboard.dart';
 import 'package:flutter_application_pharmacy/signup.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_application_pharmacy/doctor_profile.dart';
+import 'package:flutter_application_pharmacy/pharmacy_registration.dart';
+import 'package:flutter_application_pharmacy/pharmacy_profile.dart';
 
 class SignIn extends StatefulWidget {
   const SignIn({super.key});
@@ -580,16 +601,25 @@ class _SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
       User? user = userCredential.user;
 
       if (user != null) {
+        // Ensure email is non-null and valid
+        String validEmail = user.email ?? "unknown.google@example.com";
+        if (!validEmail.contains('@')) {
+          validEmail = "unknown.google@example.com";
+        }
+        String validUserName = user.displayName ?? "Unknown";
+
+        print("Google Sign-In - Email: $validEmail, Name: $validUserName");
+
         // Check if user already exists in Firestore by email
         QuerySnapshot userQuery =
             await _firestore
                 .collection('users')
-                .where('email', isEqualTo: user.email)
+                .where('email', isEqualTo: validEmail)
                 .limit(1)
                 .get();
 
         String docId;
-        String userName = user.displayName ?? "No Name";
+        String userName = validUserName;
         String? userRole;
         String? phone;
         DateTime? createdAt;
@@ -606,7 +636,7 @@ class _SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
           // New user, create with autogenerated docId
           DocumentReference newDoc = await _firestore.collection('users').add({
             'name': userName,
-            'email': user.email ?? "No Email",
+            'email': validEmail,
             'role': "Patient", // Default role
             'phone': "",
             'createdAt': FieldValue.serverTimestamp(),
@@ -620,7 +650,7 @@ class _SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
         Provider.of<UserModel>(context, listen: false).setUser(
           docId: docId,
           name: userName,
-          email: user.email ?? "No Email",
+          email: validEmail,
           role: userRole,
           phone: phone,
           createdAt: createdAt,
@@ -630,7 +660,7 @@ class _SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
         print(
           "Google Sign-In successful: $userName, Role: $userRole, DocId: $docId",
         );
-        _navigateBasedOnRole(userRole, userName, user.email ?? "No Email");
+        _navigateBasedOnRole(userRole, userName, validEmail);
       }
     } catch (e) {
       print("Google Sign-In Error: $e");
@@ -663,16 +693,23 @@ class _SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
         User? user = userCredential.user;
 
         if (user != null) {
+          // Email is already validated by form
+          String validEmail = email;
+          String validUserName =
+              "Unknown"; // Default, will be updated from Firestore
+
+          print("Email/Password Sign-In - Email: $validEmail");
+
           // Check if user exists by email
           QuerySnapshot userQuery =
               await _firestore
                   .collection('users')
-                  .where('email', isEqualTo: email)
+                  .where('email', isEqualTo: validEmail)
                   .limit(1)
                   .get();
 
           String docId;
-          String userName = "No Name";
+          String userName = validUserName;
           String? userRole;
           String? phone;
           DateTime? createdAt;
@@ -702,7 +739,7 @@ class _SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
           Provider.of<UserModel>(context, listen: false).setUser(
             docId: docId,
             name: userName,
-            email: email,
+            email: validEmail,
             role: userRole,
             phone: phone,
             createdAt: createdAt,
@@ -712,7 +749,7 @@ class _SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
           print(
             "Sign-In successful: $userName, Role: $userRole, DocId: $docId",
           );
-          _navigateBasedOnRole(userRole, userName, email);
+          _navigateBasedOnRole(userRole, userName, validEmail);
         }
       } on FirebaseAuthException catch (e) {
         String errorMessage = "Sign-in failed";
@@ -723,15 +760,15 @@ class _SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
         }
         print("Sign-In Error: $e");
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(errorMessage)));
       } catch (e) {
         print("Unexpected Sign-In Error: $e");
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: $e")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error: $e")));
       } finally {
         if (mounted) setState(() => _isLoading = false);
       }
@@ -739,18 +776,22 @@ class _SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
   }
 
   Future<void> _navigateBasedOnRole(
-      String? role, String userName, String email) async {
+    String? role,
+    String userName,
+    String email,
+  ) async {
+    print("Navigating with Role: $role, Email: $email, UserName: $userName");
+
     switch (role) {
       case "Doctor":
-        // Check if doctor already exists in the 'doctors' collection
-        QuerySnapshot doctorQuery = await _firestore
-            .collection('doctors')
-            .where('email', isEqualTo: email)
-            .limit(1)
-            .get();
+        QuerySnapshot doctorQuery =
+            await _firestore
+                .collection('doctors')
+                .where('email', isEqualTo: email)
+                .limit(1)
+                .get();
 
         if (doctorQuery.docs.isNotEmpty) {
-          // Doctor already registered, go to profile page
           String doctorId = doctorQuery.docs.first.id;
           Navigator.pushReplacement(
             context,
@@ -759,25 +800,48 @@ class _SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
             ),
           );
         } else {
-          // Doctor not registered, go to registration page with email
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) => DoctorRegistrationPage(
-                userName: userName,
-                email: email,
-              ),
+              builder:
+                  (context) =>
+                      DoctorRegistrationPage(userName: userName, email: email),
             ),
           );
         }
         break;
       case "Pharmacist":
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => PharmacistDashboard(userName: userName),
-          ),
-        );
+        // Check if pharmacy exists
+        QuerySnapshot pharmacyQuery =
+            await _firestore
+                .collection('pharmacies')
+                .where('email', isEqualTo: email)
+                .limit(1)
+                .get();
+
+        print("Pharmacy Query Result: ${pharmacyQuery.docs.length} docs found");
+        if (pharmacyQuery.docs.isNotEmpty) {
+          print("Pharmacy found with ID: ${pharmacyQuery.docs.first.id}");
+          String pharmacyId = pharmacyQuery.docs.first.id;
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PharmacyProfilePage(pharmacyId: pharmacyId),
+            ),
+          );
+        } else {
+          print("No pharmacy found, navigating to registration");
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder:
+                  (context) => PharmacyRegistrationPage(
+                    userName: userName,
+                    email: email,
+                  ),
+            ),
+          );
+        }
         break;
       case "Patient":
       case "Caretaker":
@@ -869,8 +933,10 @@ class _SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
                             : Icons.visibility_off,
                         color: Colors.grey,
                       ),
-                      onPressed: () =>
-                          setState(() => passwordVisible = !passwordVisible),
+                      onPressed:
+                          () => setState(
+                            () => passwordVisible = !passwordVisible,
+                          ),
                     ),
                   ),
                   const SizedBox(height: 30),
@@ -886,22 +952,23 @@ class _SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
                         ),
                         elevation: 4,
                       ),
-                      child: _isLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
+                      child:
+                          _isLoading
+                              ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                ),
+                              )
+                              : const Text(
+                                'Sign In',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            )
-                          : const Text(
-                              'Sign In',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -913,12 +980,13 @@ class _SignInState extends State<SignIn> with SingleTickerProviderStateMixin {
                         style: TextStyle(color: Colors.grey, fontSize: 16),
                       ),
                       GestureDetector(
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const SignUp(),
-                          ),
-                        ),
+                        onTap:
+                            () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const SignUp(),
+                              ),
+                            ),
                         child: const Text(
                           'Sign up',
                           style: TextStyle(

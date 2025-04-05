@@ -55,6 +55,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_pharmacy/models/user_model';
+import 'package:flutter_application_pharmacy/pharmacy_registration.dart';
 import 'package:flutter_application_pharmacy/screens/welcome_screen.dart';
 import 'home_page.dart';
 import 'package:flutter_application_pharmacy/medicine_reminders.dart';
