@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_application_pharmacy/models/user_model';
+import 'package:flutter_application_pharmacy/models/user_model.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -47,6 +47,7 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Appointment cancelled successfully!'),
+              backgroundColor: Colors.green,
             ),
           );
           setState(() {}); // Refresh the UI
@@ -54,7 +55,10 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error cancelling appointment: $e')),
+        SnackBar(
+          content: Text('Error cancelling appointment: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     } finally {
       setState(() => _isLoading = false);
@@ -68,10 +72,13 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Your Appointments'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+        title: const Text(
+          'Your Appointments',
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
+        backgroundColor: Colors.blueAccent,
         elevation: 0,
+        centerTitle: true,
       ),
       body:
           _isLoading
@@ -84,7 +91,10 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
                   }
                   if (!snapshot.hasData || snapshot.hasError) {
                     return const Center(
-                      child: Text('Error loading appointments'),
+                      child: Text(
+                        'Error loading appointments',
+                        style: TextStyle(color: Colors.red, fontSize: 16),
+                      ),
                     );
                   }
 
@@ -113,7 +123,10 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
 
                   if (appointments.isEmpty) {
                     return const Center(
-                      child: Text('No appointments booked yet'),
+                      child: Text(
+                        'No appointments booked yet',
+                        style: TextStyle(color: Colors.grey, fontSize: 16),
+                      ),
                     );
                   }
 
@@ -122,40 +135,67 @@ class _AppointmentsPageState extends State<AppointmentsPage> {
                     itemCount: appointments.length,
                     itemBuilder: (context, index) {
                       var appointment = appointments[index];
+                      String formattedDate = DateFormat(
+                        'MMM d, yyyy',
+                      ).format(appointment['date']);
+
                       return Card(
                         elevation: 2,
                         margin: const EdgeInsets.symmetric(vertical: 8),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: ListTile(
-                          title: Text(
-                            'Dr. ${appointment['doctorName']}',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          subtitle: Text(
-                            'Date: ${DateFormat('MMM d, yyyy').format(appointment['date'])}\nTime: ${appointment['time']}',
-                            style: const TextStyle(fontSize: 14),
-                          ),
-                          trailing:
-                              isCaretaker
-                                  ? IconButton(
-                                    icon: const Icon(
-                                      Icons.cancel,
-                                      color: Colors.red,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Dr. ${appointment['doctorName']}',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 18,
+                                        color: Colors.black87,
+                                      ),
                                     ),
-                                    onPressed:
-                                        () => _cancelAppointment(
-                                          appointment['doctorId'],
-                                          appointment['time'],
-                                          appointment['date'],
-                                        ),
-                                    tooltip: 'Cancel Appointment',
-                                  )
-                                  : null, // No trailing icon for patients
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      "Date: $formattedDate",
+                                      style: TextStyle(
+                                        color: Colors.grey[700],
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    Text(
+                                      "Time: ${appointment['time']}",
+                                      style: TextStyle(
+                                        color: Colors.grey[700],
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (isCaretaker)
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.cancel,
+                                    color: Colors.red,
+                                  ),
+                                  onPressed:
+                                      () => _cancelAppointment(
+                                        appointment['doctorId'],
+                                        appointment['time'],
+                                        appointment['date'],
+                                      ),
+                                  tooltip: 'Cancel Appointment',
+                                ),
+                            ],
+                          ),
                         ),
                       );
                     },

@@ -2,10 +2,12 @@
 // import 'package:firebase_auth/firebase_auth.dart';
 // import 'package:cloud_firestore/cloud_firestore.dart';
 // import 'package:flutter_application_pharmacy/home_page.dart';
-// import 'package:flutter_application_pharmacy/models/user_model';
+// import 'package:flutter_application_pharmacy/models/user_model.dart';
+// import 'package:flutter_application_pharmacy/screens/appointments_page.dart';
 // import 'package:flutter_application_pharmacy/screens/faqs_page.dart';
 // import 'package:flutter_application_pharmacy/screens/logout_page.dart';
 // import 'package:firebase_storage/firebase_storage.dart';
+// import 'package:flutter_application_pharmacy/screens/order_page.dart';
 // import 'package:image_picker/image_picker.dart';
 // import 'package:permission_handler/permission_handler.dart';
 // import 'dart:io';
@@ -95,7 +97,7 @@
 //           _linkedDocId =
 //               data != null && data.containsKey('linkedDocId')
 //                   ? data['linkedDocId'] ?? ''
-//                   : ''; // Safely check for linkedDocId
+//                   : '';
 //           _profileImageUrl =
 //               data != null && data.containsKey('profileImageUrl')
 //                   ? data['profileImageUrl'] ?? ''
@@ -544,21 +546,12 @@
 //                         Row(
 //                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
 //                           children: [
-//                             _buildHealthStat(
-//                               "Heart rate",
-//                               "215bpm",
-//                               Icons.favorite,
-//                             ),
+//                             _buildHealthStat("Heart rate", Icons.favorite),
 //                             _buildHealthStat(
 //                               "Calories",
-//                               "756cal",
 //                               Icons.local_fire_department,
 //                             ),
-//                             _buildHealthStat(
-//                               "Weight",
-//                               "103lbs",
-//                               Icons.fitness_center,
-//                             ),
+//                             _buildHealthStat("Weight", Icons.fitness_center),
 //                           ],
 //                         ),
 //                         const SizedBox(height: 32),
@@ -572,6 +565,18 @@
 //                             MaterialPageRoute(builder: (context) => FAQsPage()),
 //                           ),
 //                         ),
+//                         _buildProfileOption(
+//                           context,
+//                           "My Orders",
+//                           Icons.shopping_cart,
+//                           Colors.blue,
+//                           () => Navigator.push(
+//                             context,
+//                             MaterialPageRoute(
+//                               builder: (context) => const OrdersPage(),
+//                             ),
+//                           ),
+//                         ), // New option
 //                         _buildProfileOption(
 //                           context,
 //                           "Logout",
@@ -629,6 +634,24 @@
 //                               }
 //                             },
 //                           ),
+//                         if ((isCaretaker || isPatient) &&
+//                             _linkedDocId != null &&
+//                             _linkedDocId!.isNotEmpty)
+//                           _buildProfileOption(
+//                             context,
+//                             "Your Appointments",
+//                             Icons.calendar_today,
+//                             Colors.purple,
+//                             () => Navigator.push(
+//                               context,
+//                               MaterialPageRoute(
+//                                 builder:
+//                                     (context) => AppointmentsPage(
+//                                       linkedDocId: _linkedDocId!,
+//                                     ),
+//                               ),
+//                             ),
+//                           ),
 //                       ],
 //                     ),
 //                   ),
@@ -637,21 +660,13 @@
 //     );
 //   }
 
-//   Widget _buildHealthStat(String title, String value, IconData icon) {
+//   Widget _buildHealthStat(String title, IconData icon) {
 //     return FadeTransition(
 //       opacity: _fadeAnimation,
 //       child: Column(
 //         children: [
 //           Icon(icon, color: Colors.blueAccent, size: 32),
 //           const SizedBox(height: 8),
-//           Text(
-//             value,
-//             style: const TextStyle(
-//               fontSize: 20,
-//               fontWeight: FontWeight.bold,
-//               color: Colors.black87,
-//             ),
-//           ),
 //           Text(title, style: const TextStyle(fontSize: 14, color: Colors.grey)),
 //         ],
 //       ),
@@ -695,7 +710,6 @@
 //   }
 // }
 
-// // New MedicalRecordsPage for managing medical records
 // class MedicalRecordsPage extends StatefulWidget {
 //   final String linkedDocId;
 //   final bool isPatientView;
@@ -783,11 +797,9 @@
 //   Future<void> _deleteMedicalRecord(String url) async {
 //     setState(() => _isLoading = true);
 //     try {
-//       // Delete from Firebase Storage
 //       final ref = _storage.refFromURL(url);
 //       await ref.delete();
 
-//       // Update Firestore
 //       DocumentSnapshot patientDoc =
 //           await _firestore.collection('users').doc(widget.linkedDocId).get();
 //       final patientData =
@@ -949,10 +961,12 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_application_pharmacy/home_page.dart';
-import 'package:flutter_application_pharmacy/models/user_model';
+import 'package:flutter_application_pharmacy/models/user_model.dart';
 import 'package:flutter_application_pharmacy/screens/appointments_page.dart';
 import 'package:flutter_application_pharmacy/screens/faqs_page.dart';
 import 'package:flutter_application_pharmacy/screens/logout_page.dart';
+import 'package:flutter_application_pharmacy/screens/order_page.dart';
+import 'package:flutter_application_pharmacy/screens/medical_records_page.dart'; // New import
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -1043,7 +1057,7 @@ class _ProfilePageState extends State<ProfilePage>
           _linkedDocId =
               data != null && data.containsKey('linkedDocId')
                   ? data['linkedDocId'] ?? ''
-                  : ''; // Safely check for linkedDocId
+                  : '';
           _profileImageUrl =
               data != null && data.containsKey('profileImageUrl')
                   ? data['profileImageUrl'] ?? ''
@@ -1492,21 +1506,12 @@ class _ProfilePageState extends State<ProfilePage>
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
-                            _buildHealthStat(
-                              "Heart rate",
-                              "215bpm",
-                              Icons.favorite,
-                            ),
+                            _buildHealthStat("Heart rate", Icons.favorite),
                             _buildHealthStat(
                               "Calories",
-                              "756cal",
                               Icons.local_fire_department,
                             ),
-                            _buildHealthStat(
-                              "Weight",
-                              "103lbs",
-                              Icons.fitness_center,
-                            ),
+                            _buildHealthStat("Weight", Icons.fitness_center),
                           ],
                         ),
                         const SizedBox(height: 32),
@@ -1518,6 +1523,18 @@ class _ProfilePageState extends State<ProfilePage>
                           () => Navigator.push(
                             context,
                             MaterialPageRoute(builder: (context) => FAQsPage()),
+                          ),
+                        ),
+                        _buildProfileOption(
+                          context,
+                          "My Orders",
+                          Icons.shopping_cart,
+                          Colors.blue,
+                          () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const OrdersPage(),
+                            ),
                           ),
                         ),
                         _buildProfileOption(
@@ -1545,39 +1562,21 @@ class _ProfilePageState extends State<ProfilePage>
                         if (isPatient || isCaretaker)
                           _buildProfileOption(
                             context,
-                            "Upload Medical Record",
+                            "Medical Records", // Changed title for clarity
                             Icons.upload_file,
                             Colors.green,
-                            () {
-                              if (isCaretaker &&
-                                  _linkedDocId != null &&
-                                  _linkedDocId!.isNotEmpty) {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder:
-                                        (context) => MedicalRecordsPage(
-                                          linkedDocId: _linkedDocId!,
-                                        ),
-                                  ),
-                                );
-                              } else if (isPatient &&
-                                  _linkedDocId != null &&
-                                  _linkedDocId!.isNotEmpty) {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder:
-                                        (context) => MedicalRecordsPage(
-                                          linkedDocId: _docId!,
-                                          isPatientView: true,
-                                        ),
-                                  ),
-                                );
-                              }
-                            },
+                            () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder:
+                                    (context) => MedicalRecordsPage(
+                                      linkedDocId:
+                                          isPatient ? _docId! : _linkedDocId!,
+                                      isPatientView: isPatient,
+                                    ),
+                              ),
+                            ),
                           ),
-                        // Updated "Your Appointments" option for both Caretakers and Patients when linked
                         if ((isCaretaker || isPatient) &&
                             _linkedDocId != null &&
                             _linkedDocId!.isNotEmpty)
@@ -1604,21 +1603,13 @@ class _ProfilePageState extends State<ProfilePage>
     );
   }
 
-  Widget _buildHealthStat(String title, String value, IconData icon) {
+  Widget _buildHealthStat(String title, IconData icon) {
     return FadeTransition(
       opacity: _fadeAnimation,
       child: Column(
         children: [
           Icon(icon, color: Colors.blueAccent, size: 32),
           const SizedBox(height: 8),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
           Text(title, style: const TextStyle(fontSize: 14, color: Colors.grey)),
         ],
       ),
@@ -1658,254 +1649,6 @@ class _ProfilePageState extends State<ProfilePage>
           onTap: onTap,
         ),
       ),
-    );
-  }
-}
-
-class MedicalRecordsPage extends StatefulWidget {
-  final String linkedDocId;
-  final bool isPatientView;
-
-  const MedicalRecordsPage({
-    super.key,
-    required this.linkedDocId,
-    this.isPatientView = false,
-  });
-
-  @override
-  _MedicalRecordsPageState createState() => _MedicalRecordsPageState();
-}
-
-class _MedicalRecordsPageState extends State<MedicalRecordsPage> {
-  final ImagePicker _picker = ImagePicker();
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
-  bool _isLoading = false;
-
-  Future<void> _uploadMedicalRecord() async {
-    final permissionStatus = await Permission.photos.request();
-    if (permissionStatus.isGranted) {
-      try {
-        final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-        if (pickedFile != null) {
-          setState(() => _isLoading = true);
-          final file = File(pickedFile.path);
-          try {
-            final storageRef = _storage.ref().child(
-              'medical_records/${widget.linkedDocId}/${DateTime.now().millisecondsSinceEpoch}.jpg',
-            );
-            final uploadTask = storageRef.putFile(file);
-            final snapshot = await uploadTask;
-            final downloadUrl = await snapshot.ref.getDownloadURL();
-
-            DocumentSnapshot patientDoc =
-                await _firestore
-                    .collection('users')
-                    .doc(widget.linkedDocId)
-                    .get();
-            final patientData =
-                patientDoc.exists
-                    ? patientDoc.data() as Map<String, dynamic>?
-                    : null;
-            List<dynamic> existingRecords =
-                patientData != null &&
-                        patientData.containsKey('medicalRecordUrls')
-                    ? List.from(patientData['medicalRecordUrls'])
-                    : [];
-            existingRecords.add(downloadUrl);
-
-            await _firestore.collection('users').doc(widget.linkedDocId).set({
-              'medicalRecordUrls': existingRecords,
-            }, SetOptions(merge: true));
-
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Medical record uploaded successfully!'),
-              ),
-            );
-          } catch (e) {
-            print("Error uploading medical record: $e");
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Error uploading medical record: $e')),
-            );
-          } finally {
-            setState(() => _isLoading = false);
-          }
-        }
-      } catch (e) {
-        print("Error picking medical record: $e");
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error picking medical record: $e')),
-        );
-      }
-    } else {
-      print("Gallery permission denied");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gallery permission denied')),
-      );
-    }
-  }
-
-  Future<void> _deleteMedicalRecord(String url) async {
-    setState(() => _isLoading = true);
-    try {
-      final ref = _storage.refFromURL(url);
-      await ref.delete();
-
-      DocumentSnapshot patientDoc =
-          await _firestore.collection('users').doc(widget.linkedDocId).get();
-      final patientData =
-          patientDoc.exists ? patientDoc.data() as Map<String, dynamic>? : null;
-      List<dynamic> existingRecords =
-          patientData != null && patientData.containsKey('medicalRecordUrls')
-              ? List.from(patientData['medicalRecordUrls'])
-              : [];
-      existingRecords.remove(url);
-
-      await _firestore.collection('users').doc(widget.linkedDocId).set({
-        'medicalRecordUrls': existingRecords,
-      }, SetOptions(merge: true));
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Medical record deleted successfully!')),
-      );
-    } catch (e) {
-      print("Error deleting medical record: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error deleting medical record: $e')),
-      );
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Medical Records'),
-        actions: [
-          if (!widget.isPatientView)
-            IconButton(
-              icon: const Icon(Icons.add_a_photo),
-              onPressed: _isLoading ? null : _uploadMedicalRecord,
-              tooltip: 'Upload Medical Record',
-            ),
-        ],
-      ),
-      body:
-          _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : FutureBuilder<DocumentSnapshot>(
-                future:
-                    _firestore
-                        .collection('users')
-                        .doc(widget.linkedDocId)
-                        .get(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (!snapshot.hasData ||
-                      snapshot.hasError ||
-                      !snapshot.data!.exists) {
-                    return const Center(
-                      child: Text('No medical records available'),
-                    );
-                  }
-                  final data = snapshot.data!.data() as Map<String, dynamic>?;
-                  List<dynamic> medicalRecordUrls =
-                      data != null && data.containsKey('medicalRecordUrls')
-                          ? List.from(data['medicalRecordUrls'])
-                          : [];
-                  if (medicalRecordUrls.isEmpty) {
-                    return const Center(
-                      child: Text('No medical records uploaded yet'),
-                    );
-                  }
-                  return ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: medicalRecordUrls.length,
-                    itemBuilder: (context, index) {
-                      final url = medicalRecordUrls[index];
-                      return Stack(
-                        children: [
-                          GestureDetector(
-                            onTap: () {
-                              showDialog(
-                                context: context,
-                                builder:
-                                    (context) => Dialog(
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Image.network(
-                                            url,
-                                            fit: BoxFit.contain,
-                                            errorBuilder: (
-                                              context,
-                                              error,
-                                              stackTrace,
-                                            ) {
-                                              return const Text(
-                                                'Error loading image',
-                                              );
-                                            },
-                                          ),
-                                          TextButton(
-                                            onPressed:
-                                                () => Navigator.pop(context),
-                                            child: const Text('Close'),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                              );
-                            },
-                            child: Container(
-                              margin: const EdgeInsets.symmetric(vertical: 8),
-                              child: Image.network(
-                                url,
-                                height: 150,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return const Text('Error loading image');
-                                },
-                              ),
-                            ),
-                          ),
-                          if (!widget.isPatientView)
-                            Positioned(
-                              top: 8,
-                              right: 8,
-                              child: IconButton(
-                                icon: const Icon(
-                                  Icons.delete,
-                                  color: Colors.red,
-                                ),
-                                onPressed: () => _deleteMedicalRecord(url),
-                                tooltip: 'Delete Medical Record',
-                              ),
-                            ),
-                        ],
-                      );
-                    },
-                  );
-                },
-              ),
-    );
-  }
-}
-
-class RemindersScreen extends StatelessWidget {
-  const RemindersScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Reminders')),
-      body: const Center(child: Text('Reminders Page')),
     );
   }
 }
