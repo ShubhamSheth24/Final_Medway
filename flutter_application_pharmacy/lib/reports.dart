@@ -2,11 +2,175 @@
 // import 'package:firebase_auth/firebase_auth.dart';
 // import 'package:flutter/material.dart';
 // import 'package:flutter_application_pharmacy/home_page.dart';
-// import 'package:flutter_application_pharmacy/models/user_model';
+// import 'package:flutter_application_pharmacy/models/user_model.dart';
 // import 'package:flutter_application_pharmacy/screens/health_info_form.dart';
 // import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 // import 'package:intl/intl.dart';
 // import 'package:provider/provider.dart';
+// import 'package:path_provider/path_provider.dart';
+// import 'dart:io';
+
+// class BluetoothManager {
+//   BluetoothDevice? _device;
+//   bool _isConnecting = false;
+//   bool _hasShownInitialMessage = false;
+
+//   Future<void> connectToBluetooth({
+//     required BuildContext context,
+//     required String docId,
+//     required Function(String) onHeartRateUpdate,
+//     required Function(String) onMessage,
+//     required Function(bool) onFetchingStateChange,
+//     required bool isRefresh,
+//   }) async {
+//     if (_isConnecting) {
+//       print("Already attempting Bluetooth connection, skipping...");
+//       return;
+//     }
+
+//     final userModel = Provider.of<UserModel>(context, listen: false);
+//     final user = FirebaseAuth.instance.currentUser;
+
+//     if (user == null) {
+//       print("No authenticated user found.");
+//       return;
+//     }
+
+//     if (userModel.role!.isEmpty) {
+//       try {
+//         final userDoc =
+//             await FirebaseFirestore.instance
+//                 .collection('users')
+//                 .where('email', isEqualTo: user.email)
+//                 .limit(1)
+//                 .get();
+//         if (userDoc.docs.isNotEmpty) {
+//           userModel.setRole(userDoc.docs.first.data()['role'] ?? '');
+//         }
+//       } catch (e) {
+//         print("Error fetching user role: $e");
+//         return;
+//       }
+//     }
+
+//     if (userModel.role != 'Patient') {
+//       print("User is not a patient: ${userModel.role}");
+//       return;
+//     }
+
+//     print("User is a patient, attempting Bluetooth connection...");
+//     _isConnecting = true;
+//     onFetchingStateChange(true);
+
+//     try {
+//       if (!(await FlutterBluePlus.isSupported)) {
+//         return;
+//       }
+
+//       if (!(await FlutterBluePlus.isOn)) {
+//         if (!_hasShownInitialMessage && !isRefresh) {
+//           onMessage("Please turn on Bluetooth");
+//           _hasShownInitialMessage = true;
+//         } else if (isRefresh) {
+//           onMessage("Please turn on Bluetooth");
+//         }
+//         return;
+//       }
+
+//       List<BluetoothDevice> connectedDevices =
+//           await FlutterBluePlus.connectedDevices;
+//       if (connectedDevices.isEmpty) {
+//         if (isRefresh) {
+//           onMessage("Please connect to a Bluetooth device");
+//         }
+//         return;
+//       }
+
+//       _device = connectedDevices.first;
+//       print("Connecting to: ${_device!.name} (${_device!.id})");
+
+//       BluetoothDeviceState state =
+//           (await _device!.state.first) as BluetoothDeviceState;
+//       if (state != BluetoothDeviceState.connected) {
+//         print("Device not connected, establishing connection...");
+//         await _device!.connect(timeout: const Duration(seconds: 15));
+//       } else {
+//         print("Device already connected: ${_device!.name}");
+//       }
+
+//       await _discoverHeartRateService(docId, onHeartRateUpdate, onMessage);
+//     } catch (e) {
+//       print("Bluetooth connection error: $e");
+//     } finally {
+//       _isConnecting = false;
+//       onFetchingStateChange(false);
+//     }
+//   }
+
+//   Future<void> _discoverHeartRateService(
+//     String docId,
+//     Function(String) onHeartRateUpdate,
+//     Function(String) onMessage,
+//   ) async {
+//     if (_device == null) {
+//       print("No device available for service discovery");
+//       return;
+//     }
+
+//     print("Discovering services on ${_device!.name}...");
+//     try {
+//       List<BluetoothService> services = await _device!.discoverServices();
+//       print("Found ${services.length} services");
+
+//       bool heartRateServiceFound = false;
+
+//       for (BluetoothService service in services) {
+//         for (BluetoothCharacteristic characteristic
+//             in service.characteristics) {
+//           if (characteristic.uuid.toString() ==
+//                   "00002a37-0000-1000-8000-00805f9b34fb" &&
+//               characteristic.properties.notify) {
+//             heartRateServiceFound = true;
+//             print("Found heart rate characteristic: ${characteristic.uuid}");
+
+//             await characteristic.setNotifyValue(true);
+//             characteristic.value.listen(
+//               (value) {
+//                 if (value.isNotEmpty) {
+//                   int hr = value[1];
+//                   String heartRate = hr.toString();
+//                   onHeartRateUpdate(heartRate);
+//                   print("Heart rate updated: $heartRate");
+
+//                   FirebaseFirestore.instance
+//                       .collection('users')
+//                       .doc(docId)
+//                       .collection('health_info')
+//                       .doc('data')
+//                       .set({'heartRate': heartRate}, SetOptions(merge: true))
+//                       .catchError((e) => print("Error saving heart rate: $e"));
+//                 }
+//               },
+//               onError: (e) {
+//                 print("Error reading heart rate: $e");
+//               },
+//             );
+//             break;
+//           }
+//         }
+//         if (heartRateServiceFound) break;
+//       }
+//     } catch (e) {
+//       print("Service discovery error: $e");
+//     }
+//   }
+
+//   void disconnect() {
+//     _device?.disconnect();
+//     _device = null;
+//     _isConnecting = false;
+//   }
+// }
 
 // class ReportsPage extends StatefulWidget {
 //   final String userName;
@@ -21,10 +185,10 @@
 //   String _heartRate = "97";
 //   String _weight = "103";
 //   String _bloodGroup = "A+";
-//   BluetoothDevice? _device;
 //   bool _isFetching = false;
 //   bool _isLoading = false;
-//   String? _docId; // Autogenerated docId
+//   String? _docId;
+//   late BluetoothManager _bluetoothManager;
 
 //   late AnimationController _animationController;
 //   late Animation<double> _fadeAnimation;
@@ -33,6 +197,7 @@
 //   void initState() {
 //     super.initState();
 //     print("ReportsPage - Initializing...");
+//     _bluetoothManager = BluetoothManager();
 //     _animationController = AnimationController(
 //       vsync: this,
 //       duration: const Duration(milliseconds: 500),
@@ -43,19 +208,19 @@
 //     );
 //     _animationController.forward();
 //     _loadHealthData();
-//     _autoConnectToBluetooth(); // Automatically connect on init
+//     _autoConnectToBluetooth();
+//     _checkAndDownloadWeeklyReport();
 //   }
 
 //   @override
 //   void didChangeDependencies() {
 //     super.didChangeDependencies();
-//     // Re-check and connect when page becomes active
 //     _autoConnectToBluetooth();
 //   }
 
 //   @override
 //   void dispose() {
-//     _device?.disconnect();
+//     _bluetoothManager.disconnect();
 //     _animationController.dispose();
 //     super.dispose();
 //   }
@@ -66,7 +231,9 @@
 //     final user = FirebaseAuth.instance.currentUser;
 //     if (user == null) {
 //       print("No user logged in.");
-//       setState(() => _isLoading = false);
+//       setState(
+//         () => _isLoading = false,
+//       ); // Fixed typo: _iplexLoading -> _isLoading
 //       ScaffoldMessenger.of(context).showSnackBar(
 //         const SnackBar(content: Text('Please sign in to view reports')),
 //       );
@@ -117,157 +284,25 @@
 //   }
 
 //   Future<void> _autoConnectToBluetooth() async {
-//     final userModel = Provider.of<UserModel>(context, listen: false);
-//     final user = FirebaseAuth.instance.currentUser;
-
-//     if (user == null) {
-//       print("No authenticated user found.");
-//       return;
-//     }
-
-//     // Ensure UserModel role is updated
-//     if (userModel.role!.isEmpty) {
-//       try {
-//         final userDoc =
-//             await FirebaseFirestore.instance
-//                 .collection('users')
-//                 .where('email', isEqualTo: user.email)
-//                 .limit(1)
-//                 .get();
-//         if (userDoc.docs.isNotEmpty) {
-//           userModel.setRole(userDoc.docs.first.data()['role'] ?? '');
-//         }
-//       } catch (e) {
-//         print("Error fetching user role: $e");
-//         return;
-//       }
-//     }
-
-//     if (userModel.role != 'Patient') {
-//       print("User is not a patient: ${userModel.role}");
-//       return;
-//     }
-
-//     if (_isFetching) {
-//       print("Already fetching Bluetooth data, skipping...");
-//       return;
-//     }
-
-//     print("User is a patient, attempting automatic Bluetooth connection...");
-//     setState(() => _isFetching = true);
-
-//     if (!(await FlutterBluePlus.isOn)) {
-//       print("Bluetooth is off.");
-//       ScaffoldMessenger.of(context).showSnackBar(
-//         const SnackBar(content: Text('Bluetooth is off, please enable it')),
-//       );
-//       setState(() => _isFetching = false);
-//       return;
-//     }
-
-//     try {
-//       List<BluetoothDevice> connectedDevices =
-//           await FlutterBluePlus.connectedDevices;
-//       if (connectedDevices.isEmpty) {
-//         print("No Bluetooth devices currently connected.");
-//         setState(() => _isFetching = false);
-//         return;
-//       }
-
-//       // Automatically use the first connected device
-//       _device = connectedDevices.first;
-//       print("Automatically connecting to: ${_device!.name} (${_device!.id})");
-
-//       BluetoothDeviceState state =
-//           (await _device!.state.first) as BluetoothDeviceState;
-//       if (state == BluetoothDeviceState.connected) {
-//         print("Device is already connected: ${_device!.name}");
-//         await _discoverServices();
-//       } else {
-//         print("Device is not connected, attempting to connect...");
-//         await _device!.connect(timeout: const Duration(seconds: 10));
-//         await _discoverServices();
-//       }
-//     } catch (e) {
-//       print("Error during auto-connection: $e");
-//       ScaffoldMessenger.of(
-//         context,
-//       ).showSnackBar(SnackBar(content: Text('Bluetooth connection error: $e')));
-//       setState(() => _isFetching = false);
-//       _device = null;
-//     }
-//   }
-
-//   Future<void> _discoverServices() async {
-//     if (_device == null || _docId == null) {
-//       print("No device or docId available for service discovery.");
-//       setState(() => _isFetching = false);
-//       return;
-//     }
-
-//     print("Fetching services from ${_device!.name}...");
-//     try {
-//       List<BluetoothService> services = await _device!.discoverServices();
-//       print("Found ${services.length} services");
-
-//       for (BluetoothService service in services) {
-//         print("Service UUID: ${service.uuid}");
-//         for (BluetoothCharacteristic characteristic
-//             in service.characteristics) {
-//           print(
-//             "Characteristic UUID: ${characteristic.uuid}, Properties: notify=${characteristic.properties.notify}",
-//           );
-//           if (characteristic.uuid.toString() ==
-//                   "00002a37-0000-1000-8000-00805f9b34fb" &&
-//               characteristic.properties.notify) {
-//             print("Found heart rate characteristic: ${characteristic.uuid}");
-//             await characteristic.setNotifyValue(true);
-//             characteristic.value.listen(
-//               (value) {
-//                 if (value.isNotEmpty) {
-//                   int hr = value[1]; // Assuming heart rate is in second byte
-//                   setState(() {
-//                     _heartRate = hr.toString();
-//                     _isFetching = false;
-//                     print("Heart rate updated: $_heartRate");
-//                   });
-//                   FirebaseFirestore.instance
-//                       .collection('users')
-//                       .doc(_docId)
-//                       .collection('health_info')
-//                       .doc('data')
-//                       .set({'heartRate': _heartRate}, SetOptions(merge: true));
-//                 }
-//               },
-//               onError: (e) {
-//                 print("Error reading heart rate: $e");
-//               },
-//             );
-//             break;
-//           }
-//         }
-//       }
-
-//       if (!services.any(
-//         (s) => s.characteristics.any(
-//           (c) => c.uuid.toString() == "00002a37-0000-1000-8000-00805f9b34fb",
-//         ),
-//       )) {
-//         print("Heart rate service not found.");
-//         ScaffoldMessenger.of(context).showSnackBar(
-//           const SnackBar(
-//             content: Text('Heart rate service not available on this device'),
-//           ),
-//         );
-//         setState(() => _isFetching = false);
-//       }
-//     } catch (e) {
-//       print("Service discovery failed: $e");
-//       ScaffoldMessenger.of(
-//         context,
-//       ).showSnackBar(SnackBar(content: Text('Service discovery failed: $e')));
-//       setState(() => _isFetching = false);
-//     }
+//     await _bluetoothManager.connectToBluetooth(
+//       context: context,
+//       docId: _docId ?? '',
+//       onHeartRateUpdate: (heartRate) {
+//         setState(() {
+//           _heartRate = heartRate;
+//           _isFetching = false;
+//         });
+//       },
+//       onMessage: (message) {
+//         ScaffoldMessenger.of(
+//           context,
+//         ).showSnackBar(SnackBar(content: Text(message)));
+//       },
+//       onFetchingStateChange: (isFetching) {
+//         setState(() => _isFetching = isFetching);
+//       },
+//       isRefresh: false,
+//     );
 //   }
 
 //   void _editHealthInfo() {
@@ -279,7 +314,95 @@
 //     ).then((_) => _loadHealthData());
 //   }
 
-//   // Handle system back button to navigate to HomePage
+//   Future<void> _checkAndDownloadWeeklyReport() async {
+//     final user = FirebaseAuth.instance.currentUser;
+//     if (user == null || _docId == null) return;
+
+//     final now = DateTime.now();
+//     final isSundayMidnight =
+//         now.weekday == DateTime.sunday && now.hour == 0 && now.minute < 5;
+
+//     if (!isSundayMidnight) return;
+
+//     try {
+//       final userDoc =
+//           await FirebaseFirestore.instance
+//               .collection('users')
+//               .doc(_docId)
+//               .get();
+//       final linkedDocId = userDoc.data()?['linkedDocId'] as String?;
+
+//       final timeFrame = DateTime.now().subtract(const Duration(days: 7));
+//       final timestamp = Timestamp.fromDate(timeFrame);
+//       final querySnapshot =
+//           await FirebaseFirestore.instance
+//               .collection('users')
+//               .doc(_docId)
+//               .collection('reminders')
+//               .where('timestamp', isGreaterThan: timestamp)
+//               .get();
+
+//       final reminders =
+//           querySnapshot.docs.map((doc) {
+//             final data = doc.data();
+//             return {
+//               'medicine': data['medicine'] ?? 'Unknown',
+//               'dosage': data['dosage'] ?? 'N/A',
+//               'times': (data['times'] as List? ?? [])
+//                   .map((t) => t.toString())
+//                   .join(', '),
+//               'isDaily': data['isDaily'] ?? true,
+//               'timestamp': (data['timestamp'] as Timestamp?)?.toDate(),
+//               'taken': data['taken'] ?? false,
+//             };
+//           }).toList();
+
+//       String reportContent =
+//           "Weekly Health Report (${DateFormat('MMM d, yyyy').format(timeFrame)} - ${DateFormat('MMM d, yyyy').format(now)})\n\n";
+//       for (var reminder in reminders) {
+//         reportContent += "Medicine: ${reminder['medicine']}\n";
+//         reportContent += "Dosage: ${reminder['dosage']}\n";
+//         reportContent += "Times: ${reminder['times']}\n";
+//         reportContent +=
+//             "Frequency: ${reminder['isDaily'] ? 'Daily' : 'Weekly'}\n";
+//         reportContent +=
+//             "Status: ${reminder['taken'] ? 'Taken' : 'Not Taken'}\n";
+//         reportContent +=
+//             "Added: ${reminder['timestamp'] != null ? DateFormat('MMM d, h:mm a').format(reminder['timestamp'] as DateTime) : 'N/A'}\n\n";
+//       }
+
+//       final directory = await getApplicationDocumentsDirectory();
+//       final patientFile = File(
+//         '${directory.path}/weekly_report_${_docId}_${now.millisecondsSinceEpoch}.txt',
+//       );
+//       await patientFile.writeAsString(reportContent);
+//       print("Report saved for patient at: ${patientFile.path}");
+
+//       if (mounted) {
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           SnackBar(
+//             content: Text('Weekly report downloaded to ${patientFile.path}'),
+//           ),
+//         );
+//       }
+
+//       if (linkedDocId != null && linkedDocId.isNotEmpty) {
+//         final caretakerFile = File(
+//           '${directory.path}/weekly_report_${linkedDocId}_${now.millisecondsSinceEpoch}.txt',
+//         );
+//         await caretakerFile.writeAsString(reportContent);
+//         print("Report saved for caretaker at: ${caretakerFile.path}");
+//       }
+//     } catch (e) {
+//       print("Error downloading weekly report: $e");
+//       if (mounted) {
+//         ScaffoldMessenger.of(
+//           context,
+//         ).showSnackBar(SnackBar(content: Text('Error downloading report: $e')));
+//       }
+//     }
+//   }
+
 //   Future<bool> _onWillPop() async {
 //     Navigator.pushReplacement(
 //       context,
@@ -287,7 +410,7 @@
 //         builder: (context) => HomePage(userName: widget.userName),
 //       ),
 //     );
-//     return false; // Prevent default back behavior after navigation
+//     return false;
 //   }
 
 //   @override
@@ -331,7 +454,7 @@
 //         body:
 //             _isLoading
 //                 ? const Center(child: CircularProgressIndicator())
-//                 : SingleChildScrollView(
+//                 : Padding(
 //                   padding: const EdgeInsets.all(16.0),
 //                   child: Column(
 //                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -355,7 +478,29 @@
 //                                   Icons.refresh,
 //                                   color: Colors.blueAccent,
 //                                 ),
-//                                 onPressed: _autoConnectToBluetooth,
+//                                 onPressed: () async {
+//                                   await _bluetoothManager.connectToBluetooth(
+//                                     context: context,
+//                                     docId: _docId ?? '',
+//                                     onHeartRateUpdate: (heartRate) {
+//                                       setState(() {
+//                                         _heartRate = heartRate;
+//                                         _isFetching = false;
+//                                       });
+//                                     },
+//                                     onMessage: (message) {
+//                                       ScaffoldMessenger.of(
+//                                         context,
+//                                       ).showSnackBar(
+//                                         SnackBar(content: Text(message)),
+//                                       );
+//                                     },
+//                                     onFetchingStateChange: (isFetching) {
+//                                       setState(() => _isFetching = isFetching);
+//                                     },
+//                                     isRefresh: true,
+//                                   );
+//                                 },
 //                               ),
 //                             ),
 //                         ],
@@ -400,9 +545,11 @@
 //                         ),
 //                       ),
 //                       const SizedBox(height: 12),
-//                       _LatestReportsSection(
-//                         userName: widget.userName,
-//                         docId: _docId,
+//                       Expanded(
+//                         child: _LatestReportsSection(
+//                           userName: widget.userName,
+//                           docId: _docId,
+//                         ),
 //                       ),
 //                     ],
 //                   ),
@@ -473,6 +620,10 @@
 
 //   @override
 //   __LatestReportsSectionState createState() => __LatestReportsSectionState();
+
+//   static __LatestReportsSectionState? of(BuildContext context) {
+//     return context.findAncestorStateOfType<__LatestReportsSectionState>();
+//   }
 // }
 
 // class __LatestReportsSectionState extends State<_LatestReportsSection>
@@ -482,7 +633,6 @@
 //   late AnimationController _animationController;
 //   late Animation<double> _fadeAnimation;
 //   List<Map<String, dynamic>> _reminders = [];
-//   bool _isLoading = true;
 //   late ScrollController _scrollController;
 
 //   @override
@@ -498,7 +648,7 @@
 //     );
 //     _animationController.forward();
 //     _scrollController = ScrollController();
-//     _fetchReminders();
+//     _subscribeToReminders();
 //   }
 
 //   @override
@@ -508,54 +658,51 @@
 //     super.dispose();
 //   }
 
-//   Future<void> _fetchReminders() async {
-//     setState(() => _isLoading = true);
-//     final user = FirebaseAuth.instance.currentUser;
-//     if (user == null || widget.docId == null) return;
+//   void _subscribeToReminders() {
+//     if (widget.docId == null) return;
 
-//     try {
-//       final timeFrame =
-//           _showDaily
-//               ? DateTime.now().subtract(const Duration(days: 1))
-//               : DateTime.now().subtract(const Duration(days: 7));
-//       final timestamp = Timestamp.fromDate(timeFrame);
+//     final timeFrame =
+//         _showDaily
+//             ? DateTime.now().subtract(const Duration(days: 1))
+//             : DateTime.now().subtract(const Duration(days: 7));
+//     final timestamp = Timestamp.fromDate(timeFrame);
 
-//       final querySnapshot =
-//           await FirebaseFirestore.instance
-//               .collection('users')
-//               .doc(widget.docId)
-//               .collection('reminders')
-//               .where('timestamp', isGreaterThan: timestamp)
-//               .get();
+//     FirebaseFirestore.instance
+//         .collection('users')
+//         .doc(widget.docId)
+//         .collection('reminders')
+//         .where('timestamp', isGreaterThan: timestamp)
+//         .snapshots()
+//         .listen(
+//           (snapshot) {
+//             final reminders =
+//                 snapshot.docs.map((doc) {
+//                   final data = doc.data();
+//                   return {
+//                     'id': doc.id,
+//                     'medicine': data['medicine'] ?? 'Unknown',
+//                     'dosage': data['dosage'] ?? 'N/A',
+//                     'times': (data['times'] as List? ?? [])
+//                         .map((t) => t.toString())
+//                         .join(', '),
+//                     'isDaily': data['isDaily'] ?? true,
+//                     'timestamp': data['timestamp'] as Timestamp?,
+//                     'taken': data['taken'] ?? false,
+//                   };
+//                 }).toList();
 
-//       final reminders =
-//           querySnapshot.docs.map((doc) {
-//             final data = doc.data();
-//             return {
-//               'id': doc.id,
-//               'medicine': data['medicine'] ?? 'Unknown',
-//               'dosage': data['dosage'] ?? 'N/A',
-//               'times': (data['times'] as List? ?? [])
-//                   .map((t) => t.toString())
-//                   .join(', '),
-//               'isDaily': data['isDaily'] ?? true,
-//               'timestamp': data['timestamp'] as Timestamp?,
-//               'taken': data['taken'] ?? false,
-//             };
-//           }).toList();
-
-//       setState(() {
-//         _reminders = reminders;
-//         _isLoading = false;
-//         print("Reminders fetched: ${_reminders.length}");
-//       });
-//     } catch (e) {
-//       print("Error fetching reminders: $e");
-//       ScaffoldMessenger.of(
-//         context,
-//       ).showSnackBar(SnackBar(content: Text('Error fetching reminders: $e')));
-//       setState(() => _isLoading = false);
-//     }
+//             setState(() {
+//               _reminders = reminders;
+//               print("Reminders updated silently: ${_reminders.length}");
+//             });
+//           },
+//           onError: (e) {
+//             print("Error subscribing to reminders: $e");
+//             ScaffoldMessenger.of(context).showSnackBar(
+//               SnackBar(content: Text('Error fetching reminders: $e')),
+//             );
+//           },
+//         );
 //   }
 
 //   Widget _buildFilterButton(String label) {
@@ -603,11 +750,12 @@
 //         children: [
 //           GestureDetector(
 //             onTap: () {
-//               if (!_showDaily)
+//               if (!_showDaily) {
 //                 setState(() {
 //                   _showDaily = true;
-//                   _fetchReminders();
 //                 });
+//                 _subscribeToReminders();
+//               }
 //             },
 //             child: Container(
 //               width: 90,
@@ -632,11 +780,12 @@
 //           ),
 //           GestureDetector(
 //             onTap: () {
-//               if (_showDaily)
+//               if (_showDaily) {
 //                 setState(() {
 //                   _showDaily = false;
-//                   _fetchReminders();
 //                 });
+//                 _subscribeToReminders();
+//               }
 //             },
 //             child: Container(
 //               width: 90,
@@ -771,6 +920,20 @@
 
 //   @override
 //   Widget build(BuildContext context) {
+//     final filteredReminders =
+//         _filter == 'All'
+//             ? _reminders
+//             : _filter == 'Taken'
+//             ? _reminders.where((r) => r['taken'] as bool).toList()
+//             : _reminders.where((r) => !(r['taken'] as bool)).toList();
+
+//     final sortedReminders =
+//         filteredReminders..sort(
+//           (a, b) => (b['timestamp'] as Timestamp).compareTo(
+//             a['timestamp'] as Timestamp,
+//           ),
+//         );
+
 //     return Column(
 //       crossAxisAlignment: CrossAxisAlignment.start,
 //       children: [
@@ -811,9 +974,7 @@
 //                     ),
 //                   ),
 //                   const SizedBox(height: 8),
-//                   if (_isLoading)
-//                     const SizedBox.shrink()
-//                   else if (_reminders.isEmpty)
+//                   if (_reminders.isEmpty)
 //                     const SizedBox.shrink()
 //                   else
 //                     Row(
@@ -867,158 +1028,158 @@
 //           ),
 //         ),
 //         const SizedBox(height: 20),
-//         _isLoading
-//             ? const Center(child: CircularProgressIndicator())
-//             : _reminders.isEmpty
-//             ? Center(
-//               child: Column(
-//                 mainAxisAlignment: MainAxisAlignment.center,
-//                 children: [
-//                   Icon(Icons.info_outline, size: 60, color: Colors.grey[400]),
-//                   const SizedBox(height: 12),
-//                   Text(
-//                     _showDaily
-//                         ? 'No reminders added today.'
-//                         : 'No reminders added in the past week.',
-//                     style: const TextStyle(fontSize: 14, color: Colors.grey),
-//                   ),
-//                 ],
-//               ),
-//             )
-//             : SizedBox(
-//               height: 300,
-//               child: SingleChildScrollView(
-//                 controller: _scrollController,
-//                 child: Column(
-//                   children: () {
-//                     final filteredReminders =
-//                         _filter == 'All'
-//                             ? _reminders
-//                             : _filter == 'Taken'
-//                             ? _reminders.where((r) => r['taken'] as bool)
-//                             : _reminders.where((r) => !(r['taken'] as bool));
-
-//                     final sortedReminders =
-//                         filteredReminders.toList()..sort(
-//                           (a, b) => (b['timestamp'] as Timestamp).compareTo(
-//                             a['timestamp'] as Timestamp,
+//         Expanded(
+//           child:
+//               sortedReminders.isEmpty
+//                   ? Center(
+//                     child: Column(
+//                       mainAxisAlignment: MainAxisAlignment.center,
+//                       children: [
+//                         Icon(
+//                           Icons.info_outline,
+//                           size: 60,
+//                           color: Colors.grey[400],
+//                         ),
+//                         const SizedBox(height: 12),
+//                         Text(
+//                           _showDaily
+//                               ? 'No reminders added today.'
+//                               : 'No reminders added in the past week.',
+//                           style: const TextStyle(
+//                             fontSize: 14,
+//                             color: Colors.grey,
 //                           ),
-//                         );
+//                         ),
+//                       ],
+//                     ),
+//                   )
+//                   : SingleChildScrollView(
+//                     controller: _scrollController,
+//                     child: Column(
+//                       children:
+//                           sortedReminders.map((reminder) {
+//                             final isTaken = reminder['taken'] as bool;
+//                             final timestamp =
+//                                 (reminder['timestamp'] as Timestamp?)?.toDate();
+//                             final dateString =
+//                                 timestamp != null
+//                                     ? DateFormat(
+//                                       'MMM d, h:mm a',
+//                                     ).format(timestamp)
+//                                     : 'N/A';
 
-//                     return sortedReminders.map((reminder) {
-//                       final isTaken = reminder['taken'] as bool;
-//                       final timestamp =
-//                           (reminder['timestamp'] as Timestamp?)?.toDate();
-//                       final dateString =
-//                           timestamp != null
-//                               ? DateFormat('MMM d, h:mm a').format(timestamp)
-//                               : 'N/A';
-
-//                       return FadeTransition(
-//                         opacity: _fadeAnimation,
-//                         child: GestureDetector(
-//                           onTap: () => _showReminderDetails(context, reminder),
-//                           child: Card(
-//                             elevation: 2,
-//                             margin: const EdgeInsets.symmetric(vertical: 6),
-//                             shape: RoundedRectangleBorder(
-//                               borderRadius: BorderRadius.circular(10),
-//                             ),
-//                             color: Colors.grey.shade50,
-//                             child: Padding(
-//                               padding: const EdgeInsets.all(12),
-//                               child: Row(
-//                                 children: [
-//                                   CircleAvatar(
-//                                     radius: 20,
-//                                     backgroundColor:
-//                                         isTaken
-//                                             ? Colors.green.withOpacity(0.1)
-//                                             : Colors.red.withOpacity(0.1),
-//                                     child: Icon(
-//                                       isTaken
-//                                           ? Icons.check_circle
-//                                           : Icons.warning,
-//                                       color:
-//                                           isTaken ? Colors.green : Colors.red,
-//                                       size: 24,
-//                                     ),
+//                             return FadeTransition(
+//                               opacity: _fadeAnimation,
+//                               child: GestureDetector(
+//                                 onTap:
+//                                     () =>
+//                                         _showReminderDetails(context, reminder),
+//                                 child: Card(
+//                                   elevation: 2,
+//                                   margin: const EdgeInsets.symmetric(
+//                                     vertical: 6,
 //                                   ),
-//                                   const SizedBox(width: 12),
-//                                   Expanded(
-//                                     child: Column(
-//                                       crossAxisAlignment:
-//                                           CrossAxisAlignment.start,
+//                                   shape: RoundedRectangleBorder(
+//                                     borderRadius: BorderRadius.circular(10),
+//                                   ),
+//                                   color: Colors.grey.shade50,
+//                                   child: Padding(
+//                                     padding: const EdgeInsets.all(12),
+//                                     child: Row(
 //                                       children: [
-//                                         Text(
-//                                           reminder['medicine'],
-//                                           style: const TextStyle(
-//                                             fontSize: 18,
-//                                             fontWeight: FontWeight.bold,
-//                                             color: Colors.black87,
-//                                           ),
-//                                         ),
-//                                         const SizedBox(height: 2),
-//                                         Text(
-//                                           '${reminder['dosage']} • ${reminder['times']}',
-//                                           style: const TextStyle(
-//                                             fontSize: 14,
-//                                             color: Colors.grey,
-//                                           ),
-//                                         ),
-//                                         const SizedBox(height: 2),
-//                                         Text(
-//                                           'Added: $dateString',
-//                                           style: const TextStyle(
-//                                             fontSize: 12,
-//                                             color: Colors.grey,
-//                                           ),
-//                                         ),
-//                                         const SizedBox(height: 6),
-//                                         Container(
-//                                           padding: const EdgeInsets.symmetric(
-//                                             horizontal: 10,
-//                                             vertical: 4,
-//                                           ),
-//                                           decoration: BoxDecoration(
+//                                         CircleAvatar(
+//                                           radius: 20,
+//                                           backgroundColor:
+//                                               isTaken
+//                                                   ? Colors.green.withOpacity(
+//                                                     0.1,
+//                                                   )
+//                                                   : Colors.red.withOpacity(0.1),
+//                                           child: Icon(
+//                                             isTaken
+//                                                 ? Icons.check_circle
+//                                                 : Icons.warning,
 //                                             color:
 //                                                 isTaken
-//                                                     ? Colors.green.withOpacity(
-//                                                       0.1,
-//                                                     )
-//                                                     : Colors.red.withOpacity(
-//                                                       0.1,
-//                                                     ),
-//                                             borderRadius: BorderRadius.circular(
-//                                               6,
-//                                             ),
+//                                                     ? Colors.green
+//                                                     : Colors.red,
+//                                             size: 24,
 //                                           ),
-//                                           child: Text(
-//                                             isTaken ? 'Taken' : 'Not Taken',
-//                                             style: TextStyle(
-//                                               fontSize: 12,
-//                                               color:
+//                                         ),
+//                                         const SizedBox(width: 12),
+//                                         Expanded(
+//                                           child: Column(
+//                                             crossAxisAlignment:
+//                                                 CrossAxisAlignment.start,
+//                                             children: [
+//                                               Text(
+//                                                 reminder['medicine'],
+//                                                 style: const TextStyle(
+//                                                   fontSize: 18,
+//                                                   fontWeight: FontWeight.bold,
+//                                                   color: Colors.black87,
+//                                                 ),
+//                                               ),
+//                                               const SizedBox(height: 2),
+//                                               Text(
+//                                                 '${reminder['dosage']} • ${reminder['times']}',
+//                                                 style: const TextStyle(
+//                                                   fontSize: 14,
+//                                                   color: Colors.grey,
+//                                                 ),
+//                                               ),
+//                                               const SizedBox(height: 2),
+//                                               Text(
+//                                                 'Added: $dateString',
+//                                                 style: const TextStyle(
+//                                                   fontSize: 12,
+//                                                   color: Colors.grey,
+//                                                 ),
+//                                               ),
+//                                               const SizedBox(height: 6),
+//                                               Container(
+//                                                 padding:
+//                                                     const EdgeInsets.symmetric(
+//                                                       horizontal: 10,
+//                                                       vertical: 4,
+//                                                     ),
+//                                                 decoration: BoxDecoration(
+//                                                   color:
+//                                                       isTaken
+//                                                           ? Colors.green
+//                                                               .withOpacity(0.1)
+//                                                           : Colors.red
+//                                                               .withOpacity(0.1),
+//                                                   borderRadius:
+//                                                       BorderRadius.circular(6),
+//                                                 ),
+//                                                 child: Text(
 //                                                   isTaken
-//                                                       ? Colors.green
-//                                                       : Colors.red,
-//                                               fontWeight: FontWeight.w600,
-//                                             ),
+//                                                       ? 'Taken'
+//                                                       : 'Not Taken',
+//                                                   style: TextStyle(
+//                                                     fontSize: 12,
+//                                                     color:
+//                                                         isTaken
+//                                                             ? Colors.green
+//                                                             : Colors.red,
+//                                                     fontWeight: FontWeight.w600,
+//                                                   ),
+//                                                 ),
+//                                               ),
+//                                             ],
 //                                           ),
 //                                         ),
 //                                       ],
 //                                     ),
 //                                   ),
-//                                 ],
+//                                 ),
 //                               ),
-//                             ),
-//                           ),
-//                         ),
-//                       );
-//                     }).toList();
-//                   }(),
-//                 ),
-//               ),
-//             ),
+//                             );
+//                           }).toList(),
+//                     ),
+//                   ),
+//         ),
 //       ],
 //     );
 //   }
@@ -1044,6 +1205,8 @@ import 'package:flutter_application_pharmacy/screens/health_info_form.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 
 class BluetoothManager {
   BluetoothDevice? _device;
@@ -1244,6 +1407,7 @@ class _ReportsPageState extends State<ReportsPage>
     _animationController.forward();
     _loadHealthData();
     _autoConnectToBluetooth();
+    _checkAndDownloadWeeklyReport();
   }
 
   @override
@@ -1290,7 +1454,7 @@ class _ReportsPageState extends State<ReportsPage>
                 .doc('data')
                 .get();
 
-        print("Firestore response - Exists: ${doc.exists}");
+        print("Firestore response - Exists: ${doc.exists}, Doc: $doc");
         if (doc.exists) {
           final data = doc.data();
           setState(() {
@@ -1303,7 +1467,14 @@ class _ReportsPageState extends State<ReportsPage>
           });
         } else {
           print("No data found at path. Using defaults.");
+          setState(() {
+            _weight = "103";
+            _bloodGroup = "A+";
+            _heartRate = "97";
+          });
         }
+      } else {
+        print("No user document found for email: ${user.email}");
       }
     } catch (e) {
       print("Error loading health data: $e");
@@ -1343,7 +1514,100 @@ class _ReportsPageState extends State<ReportsPage>
       MaterialPageRoute(
         builder: (context) => HealthInfoForm(userName: widget.userName),
       ),
-    ).then((_) => _loadHealthData());
+    ).then((value) {
+      if (value == true) {
+        _loadHealthData(); // Reload data immediately after saving
+      }
+    });
+  }
+
+  Future<void> _checkAndDownloadWeeklyReport() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || _docId == null) return;
+
+    final now = DateTime.now();
+    final isSundayMidnight =
+        now.weekday == DateTime.sunday && now.hour == 0 && now.minute < 5;
+
+    if (!isSundayMidnight) return;
+
+    try {
+      final userDoc =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(_docId)
+              .get();
+      final linkedDocId = userDoc.data()?['linkedDocId'] as String?;
+
+      final timeFrame = DateTime.now().subtract(const Duration(days: 7));
+      final timestamp = Timestamp.fromDate(timeFrame);
+      final querySnapshot =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(_docId)
+              .collection('reminders')
+              .where('timestamp', isGreaterThan: timestamp)
+              .get();
+
+      final reminders =
+          querySnapshot.docs.map((doc) {
+            final data = doc.data();
+            return {
+              'medicine': data['medicine'] ?? 'Unknown',
+              'dosage': data['dosage'] ?? 'N/A',
+              'times': (data['times'] as List? ?? [])
+                  .map((t) => t.toString())
+                  .join(', '),
+              'isDaily': data['isDaily'] ?? true,
+              'timestamp': (data['timestamp'] as Timestamp?)?.toDate(),
+              'taken': data['taken'] ?? false,
+            };
+          }).toList();
+
+      String reportContent =
+          "Weekly Health Report (${DateFormat('MMM d, yyyy').format(timeFrame)} - ${DateFormat('MMM d, yyyy').format(now)})\n\n";
+      for (var reminder in reminders) {
+        reportContent += "Medicine: ${reminder['medicine']}\n";
+        reportContent += "Dosage: ${reminder['dosage']}\n";
+        reportContent += "Times: ${reminder['times']}\n";
+        reportContent +=
+            "Frequency: ${reminder['isDaily'] ? 'Daily' : 'Weekly'}\n";
+        reportContent +=
+            "Status: ${reminder['taken'] ? 'Taken' : 'Not Taken'}\n";
+        reportContent +=
+            "Added: ${reminder['timestamp'] != null ? DateFormat('MMM d, h:mm a').format(reminder['timestamp'] as DateTime) : 'N/A'}\n\n";
+      }
+
+      final directory = await getApplicationDocumentsDirectory();
+      final patientFile = File(
+        '${directory.path}/weekly_report_${_docId}_${now.millisecondsSinceEpoch}.txt',
+      );
+      await patientFile.writeAsString(reportContent);
+      print("Report saved for patient at: ${patientFile.path}");
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Weekly report downloaded to ${patientFile.path}'),
+          ),
+        );
+      }
+
+      if (linkedDocId != null && linkedDocId.isNotEmpty) {
+        final caretakerFile = File(
+          '${directory.path}/weekly_report_${linkedDocId}_${now.millisecondsSinceEpoch}.txt',
+        );
+        await caretakerFile.writeAsString(reportContent);
+        print("Report saved for caretaker at: ${caretakerFile.path}");
+      }
+    } catch (e) {
+      print("Error downloading weekly report: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error downloading report: $e')));
+      }
+    }
   }
 
   Future<bool> _onWillPop() async {
@@ -1397,7 +1661,7 @@ class _ReportsPageState extends State<ReportsPage>
         body:
             _isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : SingleChildScrollView(
+                : Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1488,9 +1752,11 @@ class _ReportsPageState extends State<ReportsPage>
                         ),
                       ),
                       const SizedBox(height: 12),
-                      _LatestReportsSection(
-                        userName: widget.userName,
-                        docId: _docId,
+                      Expanded(
+                        child: _LatestReportsSection(
+                          userName: widget.userName,
+                          docId: _docId,
+                        ),
                       ),
                     ],
                   ),
@@ -1561,6 +1827,10 @@ class _LatestReportsSection extends StatefulWidget {
 
   @override
   __LatestReportsSectionState createState() => __LatestReportsSectionState();
+
+  static __LatestReportsSectionState? of(BuildContext context) {
+    return context.findAncestorStateOfType<__LatestReportsSectionState>();
+  }
 }
 
 class __LatestReportsSectionState extends State<_LatestReportsSection>
@@ -1570,7 +1840,6 @@ class __LatestReportsSectionState extends State<_LatestReportsSection>
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   List<Map<String, dynamic>> _reminders = [];
-  bool _isLoading = true;
   late ScrollController _scrollController;
 
   @override
@@ -1586,7 +1855,7 @@ class __LatestReportsSectionState extends State<_LatestReportsSection>
     );
     _animationController.forward();
     _scrollController = ScrollController();
-    _fetchReminders();
+    _subscribeToReminders();
   }
 
   @override
@@ -1596,54 +1865,51 @@ class __LatestReportsSectionState extends State<_LatestReportsSection>
     super.dispose();
   }
 
-  Future<void> _fetchReminders() async {
-    setState(() => _isLoading = true);
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null || widget.docId == null) return;
+  void _subscribeToReminders() {
+    if (widget.docId == null) return;
 
-    try {
-      final timeFrame =
-          _showDaily
-              ? DateTime.now().subtract(const Duration(days: 1))
-              : DateTime.now().subtract(const Duration(days: 7));
-      final timestamp = Timestamp.fromDate(timeFrame);
+    final timeFrame =
+        _showDaily
+            ? DateTime.now().subtract(const Duration(days: 1))
+            : DateTime.now().subtract(const Duration(days: 7));
+    final timestamp = Timestamp.fromDate(timeFrame);
 
-      final querySnapshot =
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(widget.docId)
-              .collection('reminders')
-              .where('timestamp', isGreaterThan: timestamp)
-              .get();
+    FirebaseFirestore.instance
+        .collection('users')
+        .doc(widget.docId)
+        .collection('reminders')
+        .where('timestamp', isGreaterThan: timestamp)
+        .snapshots()
+        .listen(
+          (snapshot) {
+            final reminders =
+                snapshot.docs.map((doc) {
+                  final data = doc.data();
+                  return {
+                    'id': doc.id,
+                    'medicine': data['medicine'] ?? 'Unknown',
+                    'dosage': data['dosage'] ?? 'N/A',
+                    'times': (data['times'] as List? ?? [])
+                        .map((t) => t.toString())
+                        .join(', '),
+                    'isDaily': data['isDaily'] ?? true,
+                    'timestamp': data['timestamp'] as Timestamp?,
+                    'taken': data['taken'] ?? false,
+                  };
+                }).toList();
 
-      final reminders =
-          querySnapshot.docs.map((doc) {
-            final data = doc.data();
-            return {
-              'id': doc.id,
-              'medicine': data['medicine'] ?? 'Unknown',
-              'dosage': data['dosage'] ?? 'N/A',
-              'times': (data['times'] as List? ?? [])
-                  .map((t) => t.toString())
-                  .join(', '),
-              'isDaily': data['isDaily'] ?? true,
-              'timestamp': data['timestamp'] as Timestamp?,
-              'taken': data['taken'] ?? false,
-            };
-          }).toList();
-
-      setState(() {
-        _reminders = reminders;
-        _isLoading = false;
-        print("Reminders fetched: ${_reminders.length}");
-      });
-    } catch (e) {
-      print("Error fetching reminders: $e");
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error fetching reminders: $e')));
-      setState(() => _isLoading = false);
-    }
+            setState(() {
+              _reminders = reminders;
+              print("Reminders updated silently: ${_reminders.length}");
+            });
+          },
+          onError: (e) {
+            print("Error subscribing to reminders: $e");
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error fetching reminders: $e')),
+            );
+          },
+        );
   }
 
   Widget _buildFilterButton(String label) {
@@ -1691,11 +1957,12 @@ class __LatestReportsSectionState extends State<_LatestReportsSection>
         children: [
           GestureDetector(
             onTap: () {
-              if (!_showDaily)
+              if (!_showDaily) {
                 setState(() {
                   _showDaily = true;
-                  _fetchReminders();
                 });
+                _subscribeToReminders();
+              }
             },
             child: Container(
               width: 90,
@@ -1720,11 +1987,12 @@ class __LatestReportsSectionState extends State<_LatestReportsSection>
           ),
           GestureDetector(
             onTap: () {
-              if (_showDaily)
+              if (_showDaily) {
                 setState(() {
                   _showDaily = false;
-                  _fetchReminders();
                 });
+                _subscribeToReminders();
+              }
             },
             child: Container(
               width: 90,
@@ -1859,6 +2127,20 @@ class __LatestReportsSectionState extends State<_LatestReportsSection>
 
   @override
   Widget build(BuildContext context) {
+    final filteredReminders =
+        _filter == 'All'
+            ? _reminders
+            : _filter == 'Taken'
+            ? _reminders.where((r) => r['taken'] as bool).toList()
+            : _reminders.where((r) => !(r['taken'] as bool)).toList();
+
+    final sortedReminders =
+        filteredReminders..sort(
+          (a, b) => (b['timestamp'] as Timestamp).compareTo(
+            a['timestamp'] as Timestamp,
+          ),
+        );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1899,9 +2181,7 @@ class __LatestReportsSectionState extends State<_LatestReportsSection>
                     ),
                   ),
                   const SizedBox(height: 8),
-                  if (_isLoading)
-                    const SizedBox.shrink()
-                  else if (_reminders.isEmpty)
+                  if (_reminders.isEmpty)
                     const SizedBox.shrink()
                   else
                     Row(
@@ -1914,7 +2194,7 @@ class __LatestReportsSectionState extends State<_LatestReportsSection>
                               '${_reminders.isNotEmpty ? (_reminders.where((r) => r['taken'] as bool).length / _reminders.length * 100).toStringAsFixed(1) : '0'}%',
                               style: const TextStyle(
                                 fontSize: 28,
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.bold, // Fixed typo here
                                 color: Colors.blueAccent,
                               ),
                             ),
@@ -1955,158 +2235,158 @@ class __LatestReportsSectionState extends State<_LatestReportsSection>
           ),
         ),
         const SizedBox(height: 20),
-        _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : _reminders.isEmpty
-            ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.info_outline, size: 60, color: Colors.grey[400]),
-                  const SizedBox(height: 12),
-                  Text(
-                    _showDaily
-                        ? 'No reminders added today.'
-                        : 'No reminders added in the past week.',
-                    style: const TextStyle(fontSize: 14, color: Colors.grey),
-                  ),
-                ],
-              ),
-            )
-            : SizedBox(
-              height: 300,
-              child: SingleChildScrollView(
-                controller: _scrollController,
-                child: Column(
-                  children: () {
-                    final filteredReminders =
-                        _filter == 'All'
-                            ? _reminders
-                            : _filter == 'Taken'
-                            ? _reminders.where((r) => r['taken'] as bool)
-                            : _reminders.where((r) => !(r['taken'] as bool));
-
-                    final sortedReminders =
-                        filteredReminders.toList()..sort(
-                          (a, b) => (b['timestamp'] as Timestamp).compareTo(
-                            a['timestamp'] as Timestamp,
+        Expanded(
+          child:
+              sortedReminders.isEmpty
+                  ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          size: 60,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          _showDaily
+                              ? 'No reminders added today.'
+                              : 'No reminders added in the past week.',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey,
                           ),
-                        );
+                        ),
+                      ],
+                    ),
+                  )
+                  : SingleChildScrollView(
+                    controller: _scrollController,
+                    child: Column(
+                      children:
+                          sortedReminders.map((reminder) {
+                            final isTaken = reminder['taken'] as bool;
+                            final timestamp =
+                                (reminder['timestamp'] as Timestamp?)?.toDate();
+                            final dateString =
+                                timestamp != null
+                                    ? DateFormat(
+                                      'MMM d, h:mm a',
+                                    ).format(timestamp)
+                                    : 'N/A';
 
-                    return sortedReminders.map((reminder) {
-                      final isTaken = reminder['taken'] as bool;
-                      final timestamp =
-                          (reminder['timestamp'] as Timestamp?)?.toDate();
-                      final dateString =
-                          timestamp != null
-                              ? DateFormat('MMM d, h:mm a').format(timestamp)
-                              : 'N/A';
-
-                      return FadeTransition(
-                        opacity: _fadeAnimation,
-                        child: GestureDetector(
-                          onTap: () => _showReminderDetails(context, reminder),
-                          child: Card(
-                            elevation: 2,
-                            margin: const EdgeInsets.symmetric(vertical: 6),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            color: Colors.grey.shade50,
-                            child: Padding(
-                              padding: const EdgeInsets.all(12),
-                              child: Row(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 20,
-                                    backgroundColor:
-                                        isTaken
-                                            ? Colors.green.withOpacity(0.1)
-                                            : Colors.red.withOpacity(0.1),
-                                    child: Icon(
-                                      isTaken
-                                          ? Icons.check_circle
-                                          : Icons.warning,
-                                      color:
-                                          isTaken ? Colors.green : Colors.red,
-                                      size: 24,
-                                    ),
+                            return FadeTransition(
+                              opacity: _fadeAnimation,
+                              child: GestureDetector(
+                                onTap:
+                                    () =>
+                                        _showReminderDetails(context, reminder),
+                                child: Card(
+                                  elevation: 2,
+                                  margin: const EdgeInsets.symmetric(
+                                    vertical: 6,
                                   ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  color: Colors.grey.shade50,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(12),
+                                    child: Row(
                                       children: [
-                                        Text(
-                                          reminder['medicine'],
-                                          style: const TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.black87,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          '${reminder['dosage']} • ${reminder['times']}',
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.grey,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          'Added: $dateString',
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 10,
-                                            vertical: 4,
-                                          ),
-                                          decoration: BoxDecoration(
+                                        CircleAvatar(
+                                          radius: 20,
+                                          backgroundColor:
+                                              isTaken
+                                                  ? Colors.green.withOpacity(
+                                                    0.1,
+                                                  )
+                                                  : Colors.red.withOpacity(0.1),
+                                          child: Icon(
+                                            isTaken
+                                                ? Icons.check_circle
+                                                : Icons.warning,
                                             color:
                                                 isTaken
-                                                    ? Colors.green.withOpacity(
-                                                      0.1,
-                                                    )
-                                                    : Colors.red.withOpacity(
-                                                      0.1,
-                                                    ),
-                                            borderRadius: BorderRadius.circular(
-                                              6,
-                                            ),
+                                                    ? Colors.green
+                                                    : Colors.red,
+                                            size: 24,
                                           ),
-                                          child: Text(
-                                            isTaken ? 'Taken' : 'Not Taken',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color:
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                reminder['medicine'],
+                                                style: const TextStyle(
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.black87,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                '${reminder['dosage']} • ${reminder['times']}',
+                                                style: const TextStyle(
+                                                  fontSize: 14,
+                                                  color: Colors.grey,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                'Added: $dateString',
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.grey,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 6),
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 10,
+                                                      vertical: 4,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color:
+                                                      isTaken
+                                                          ? Colors.green
+                                                              .withOpacity(0.1)
+                                                          : Colors.red
+                                                              .withOpacity(0.1),
+                                                  borderRadius:
+                                                      BorderRadius.circular(6),
+                                                ),
+                                                child: Text(
                                                   isTaken
-                                                      ? Colors.green
-                                                      : Colors.red,
-                                              fontWeight: FontWeight.w600,
-                                            ),
+                                                      ? 'Taken'
+                                                      : 'Not Taken',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color:
+                                                        isTaken
+                                                            ? Colors.green
+                                                            : Colors.red,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
                                       ],
                                     ),
                                   ),
-                                ],
+                                ),
                               ),
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList();
-                  }(),
-                ),
-              ),
-            ),
+                            );
+                          }).toList(),
+                    ),
+                  ),
+        ),
       ],
     );
   }

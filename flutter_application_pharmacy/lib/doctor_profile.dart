@@ -228,7 +228,10 @@ class _DoctorProfilePageState extends State<DoctorProfilePage>
     );
   }
 
-  void _editAvailableSlots(List<dynamic> currentSlots) {
+  void _editAvailableSlots(
+    List<dynamic> currentSlots,
+    List<DateTime> selectedDates,
+  ) {
     List<String> allSlots = [
       "9:00 AM",
       "10:00 AM",
@@ -258,15 +261,93 @@ class _DoctorProfilePageState extends State<DoctorProfilePage>
                   content: SingleChildScrollView(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
-                      children: List.generate(allSlots.length, (index) {
-                        return CheckboxListTile(
-                          title: Text(allSlots[index]),
-                          value: slotSelection[index],
-                          onChanged: (value) {
-                            setState(() {
-                              slotSelection[index] = value!;
-                            });
-                          },
+                      children: List.generate(3, (rowIndex) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8.0),
+                          child: Row(
+                            children: List.generate(4, (colIndex) {
+                              int index = rowIndex * 4 + colIndex;
+                              final slotTime = allSlots[index];
+                              final now = DateTime.now();
+                              final today = DateTime(
+                                now.year,
+                                now.month,
+                                now.day,
+                              );
+
+                              bool isTodaySelected = selectedDates.any(
+                                (d) =>
+                                    d.year == today.year &&
+                                    d.month == today.month &&
+                                    d.day == today.day,
+                              );
+                              bool isPastSlot = false;
+                              if (isTodaySelected) {
+                                final slotDateTime = _parseTimeSlot(
+                                  slotTime,
+                                  today,
+                                );
+                                isPastSlot = slotDateTime.isBefore(now);
+                              }
+
+                              return Expanded(
+                                child: Padding(
+                                  padding: EdgeInsets.only(
+                                    right: colIndex < 3 ? 8.0 : 0,
+                                  ),
+                                  child: GestureDetector(
+                                    onTap:
+                                        isPastSlot
+                                            ? null
+                                            : () {
+                                              setState(() {
+                                                slotSelection[index] =
+                                                    !slotSelection[index];
+                                              });
+                                            },
+                                    child: AnimatedContainer(
+                                      duration: const Duration(
+                                        milliseconds: 200,
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 10,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color:
+                                            slotSelection[index]
+                                                ? Colors.blue[500]
+                                                : Colors.white,
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color:
+                                              isPastSlot
+                                                  ? Colors.grey[200]!
+                                                  : slotSelection[index]
+                                                  ? Colors.blue[500]!
+                                                  : Colors.grey[300]!,
+                                        ),
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          slotTime,
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color:
+                                                isPastSlot
+                                                    ? Colors.grey[400]
+                                                    : slotSelection[index]
+                                                    ? Colors.white
+                                                    : Colors.grey[800],
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }),
+                          ),
                         );
                       }),
                     ),
@@ -308,6 +389,7 @@ class _DoctorProfilePageState extends State<DoctorProfilePage>
     List<DateTime> selectedDates =
         currentDates.map((date) => DateTime.parse(date)).toList();
     DateTime currentMonth = DateTime.now();
+    final DateTime today = DateTime.now();
 
     showDialog(
       context: context,
@@ -316,11 +398,16 @@ class _DoctorProfilePageState extends State<DoctorProfilePage>
             builder:
                 (context, setState) => AlertDialog(
                   title: const Text("Edit Available Dates"),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 0,
+                    vertical: 10,
+                  ),
                   content: SingleChildScrollView(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 16),
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(12),
@@ -374,55 +461,6 @@ class _DoctorProfilePageState extends State<DoctorProfilePage>
                                 ],
                               ),
                               const SizedBox(height: 10),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: const [
-                                  Text(
-                                    'Sun',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Mon',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Tue',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Wed',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Thu',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Fri',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Sat',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 10),
                               _buildCalendar(
                                 currentMonth,
                                 selectedDates,
@@ -458,6 +496,42 @@ class _DoctorProfilePageState extends State<DoctorProfilePage>
     );
   }
 
+  // Helper function to parse time slot to DateTime
+  DateTime _parseTimeSlot(String timeSlot, DateTime date) {
+    final timeFormat = DateFormat('h:mm a');
+    final parsedTime = timeFormat.parse(timeSlot);
+    return DateTime(
+      date.year,
+      date.month,
+      date.day,
+      parsedTime.hour,
+      parsedTime.minute,
+    );
+  }
+
+  // Check if there are any future slots available today
+  bool _hasFutureSlotsToday() {
+    final now = DateTime.now();
+    const allSlots = [
+      "9:00 AM",
+      "10:00 AM",
+      "11:00 AM",
+      "12:00 PM",
+      "1:00 PM",
+      "2:00 PM",
+      "3:00 PM",
+      "4:00 PM",
+      "5:00 PM",
+      "6:00 PM",
+      "7:00 PM",
+      "8:00 PM",
+    ];
+    return allSlots.any((slot) {
+      final slotTime = _parseTimeSlot(slot, now);
+      return slotTime.isAfter(now);
+    });
+  }
+
   Widget _buildCalendar(
     DateTime currentMonth,
     List<DateTime> selectedDates,
@@ -467,75 +541,174 @@ class _DoctorProfilePageState extends State<DoctorProfilePage>
     final firstDayOfMonth = DateTime(currentMonth.year, currentMonth.month, 1);
     final daysInMonth =
         DateTime(currentMonth.year, currentMonth.month + 1, 0).day;
-    final firstDayWeekday = firstDayOfMonth.weekday % 7;
+    final firstDayWeekday = firstDayOfMonth.weekday % 7; // Sunday as 0
+    final today = DateTime.now();
 
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: List.generate(firstDayWeekday + daysInMonth, (index) {
-        if (index < firstDayWeekday) {
-          return const SizedBox(width: 40, height: 40);
-        }
-        final day = index - firstDayWeekday + 1;
-        final currentDate = DateTime(
-          currentMonth.year,
-          currentMonth.month,
-          day,
-        );
-        final dayName = DateFormat('EEEE').format(currentDate);
-        final isSelectable = availableDays.contains(dayName);
-        final isSelected = selectedDates.any(
-          (d) =>
-              d.day == currentDate.day &&
-              d.month == currentDate.month &&
-              d.year == currentDate.year,
-        );
+    int totalSlots = firstDayWeekday + daysInMonth;
+    int weeks = (totalSlots / 7).ceil();
 
-        return GestureDetector(
-          onTap:
-              isSelectable
-                  ? () {
-                    setState(() {
-                      if (isSelected) {
-                        selectedDates.removeWhere(
-                          (d) =>
-                              d.day == currentDate.day &&
-                              d.month == currentDate.month &&
-                              d.year == currentDate.year,
-                        );
-                      } else {
-                        selectedDates.add(currentDate);
-                      }
-                    });
-                  }
-                  : null,
-          child: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: isSelected ? Colors.blue[500] : Colors.transparent,
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: isSelectable ? Colors.grey[400]! : Colors.grey[200]!,
-              ),
-            ),
-            child: Center(
-              child: Text(
-                '$day',
-                style: TextStyle(
-                  color:
-                      isSelected
-                          ? Colors.white
-                          : isSelectable
-                          ? Colors.black
-                          : Colors.grey[400],
-                  fontWeight: FontWeight.w500,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: const [
+            SizedBox(
+              width: 40,
+              child: Center(
+                child: Text(
+                  'Sun',
+                  style: TextStyle(fontWeight: FontWeight.w500),
                 ),
               ),
             ),
-          ),
-        );
-      }),
+            SizedBox(
+              width: 40,
+              child: Center(
+                child: Text(
+                  'Mon',
+                  style: TextStyle(fontWeight: FontWeight.w500),
+                ),
+              ),
+            ),
+            SizedBox(
+              width: 40,
+              child: Center(
+                child: Text(
+                  'Tue',
+                  style: TextStyle(fontWeight: FontWeight.w500),
+                ),
+              ),
+            ),
+            SizedBox(
+              width: 40,
+              child: Center(
+                child: Text(
+                  'Wed',
+                  style: TextStyle(fontWeight: FontWeight.w500),
+                ),
+              ),
+            ),
+            SizedBox(
+              width: 40,
+              child: Center(
+                child: Text(
+                  'Thu',
+                  style: TextStyle(fontWeight: FontWeight.w500),
+                ),
+              ),
+            ),
+            SizedBox(
+              width: 40,
+              child: Center(
+                child: Text(
+                  'Fri',
+                  style: TextStyle(fontWeight: FontWeight.w500),
+                ),
+              ),
+            ),
+            SizedBox(
+              width: 40,
+              child: Center(
+                child: Text(
+                  'Sat',
+                  style: TextStyle(fontWeight: FontWeight.w500),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        ...List.generate(weeks, (weekIndex) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 4.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: List.generate(7, (dayIndex) {
+                int dayOffset = weekIndex * 7 + dayIndex - firstDayWeekday + 1;
+                if (dayOffset <= 0 || dayOffset > daysInMonth) {
+                  return const SizedBox(width: 40, height: 40);
+                }
+
+                final currentDate = DateTime(
+                  currentMonth.year,
+                  currentMonth.month,
+                  dayOffset,
+                );
+                final dayName = DateFormat('EEEE').format(currentDate);
+                final isSelectable = availableDays.contains(dayName);
+                final isPastDate = currentDate.isBefore(
+                  DateTime(today.year, today.month, today.day),
+                );
+                final isToday =
+                    currentDate.day == today.day &&
+                    currentDate.month == today.month &&
+                    currentDate.year == today.year;
+                final isSelectableToday = isToday && _hasFutureSlotsToday();
+                final isSelected = selectedDates.any(
+                  (d) =>
+                      d.day == currentDate.day &&
+                      d.month == currentDate.month &&
+                      d.year == currentDate.year,
+                );
+
+                return GestureDetector(
+                  onTap:
+                      (isSelectable && !isPastDate) || isSelectableToday
+                          ? () {
+                            setState(() {
+                              if (isSelected) {
+                                selectedDates.removeWhere(
+                                  (d) =>
+                                      d.day == currentDate.day &&
+                                      d.month == currentDate.month &&
+                                      d.year == currentDate.year,
+                                );
+                              } else {
+                                selectedDates.add(currentDate);
+                              }
+                            });
+                          }
+                          : null,
+                  child: SizedBox(
+                    width: 40,
+                    height: 40,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color:
+                            isSelected ? Colors.blue[500] : Colors.transparent,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color:
+                              (isSelectable && !isPastDate) || isSelectableToday
+                                  ? Colors.grey[400]!
+                                  : Colors.grey[200]!,
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          '$dayOffset',
+                          style: TextStyle(
+                            color:
+                                isSelected
+                                    ? Colors.white
+                                    : isPastDate && !isSelectableToday
+                                    ? Colors.grey[400]
+                                    : isSelectable || isSelectableToday
+                                    ? Colors.black
+                                    : Colors.grey[400],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ),
+          );
+        }),
+      ],
     );
   }
 
@@ -788,7 +961,6 @@ class _DoctorProfilePageState extends State<DoctorProfilePage>
                     ),
                   ),
                 ),
-                // New Available Dates Section
                 Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16.0,
@@ -889,8 +1061,27 @@ class _DoctorProfilePageState extends State<DoctorProfilePage>
                               IconButton(
                                 icon: const Icon(Icons.edit, size: 20),
                                 color: Colors.blue[700],
-                                onPressed:
-                                    () => _editAvailableSlots(availableSlots),
+                                onPressed: () async {
+                                  final snapshot = await _doctorFuture;
+                                  final data =
+                                      snapshot.data() as Map<String, dynamic>;
+                                  final currentSlots =
+                                      data['availableSlots'] as List<dynamic>;
+                                  final currentDates =
+                                      data['availableDates'] != null
+                                          ? List<String>.from(
+                                            data['availableDates'],
+                                          )
+                                          : [];
+                                  final selectedDates =
+                                      currentDates
+                                          .map((date) => DateTime.parse(date))
+                                          .toList();
+                                  _editAvailableSlots(
+                                    currentSlots,
+                                    selectedDates,
+                                  );
+                                },
                               ),
                             ],
                           ),

@@ -17,7 +17,8 @@ class _DisplayImagesScreenState extends State<DisplayImagesScreen> {
 
   Future<List<String>> fetchImages() async {
     List<String> urls = [];
-    final ListResult result = await FirebaseStorage.instance.ref().child("images").listAll();
+    final ListResult result =
+        await FirebaseStorage.instance.ref().child("images").listAll();
     for (var ref in result.items) {
       String url = await ref.getDownloadURL();
       urls.add(url);

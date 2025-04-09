@@ -15,8 +15,9 @@ class _HealthInfoFormState extends State<HealthInfoForm> {
   final _formKey = GlobalKey<FormState>();
   String? _weight;
   String? _bloodGroup;
+  String? _heartRate;
 
-  // List of all possible blood groups (static)
+  // Static list of blood groups
   final List<String> _bloodGroups = [
     "A+",
     "A-",
@@ -38,28 +39,33 @@ class _HealthInfoFormState extends State<HealthInfoForm> {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       debugPrint("HealthInfoForm - Loading data for UID: ${user.uid}");
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('health_info')
-          .doc('data')
-          .get();
+      final doc =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .collection('health_info')
+              .doc('data')
+              .get();
       if (doc.exists) {
         setState(() {
           _weight = doc['weight'] as String?;
-          // Check if blood group from Firestore is in _bloodGroups, else set default
-          String? loadedBloodGroup = doc['bloodGroup'] as String?;
-          _bloodGroup = _bloodGroups.contains(loadedBloodGroup)
-              ? loadedBloodGroup
-              : "A+"; // Default to "A+" if invalid
+          _bloodGroup =
+              _bloodGroups.contains(doc['bloodGroup'] as String?)
+                  ? doc['bloodGroup'] as String?
+                  : "A+"; // Default to "A+" if invalid
+          _heartRate = doc['heartRate'] as String?;
           debugPrint(
-              "HealthInfoForm - Loaded data: Weight: $_weight, Blood Group: $_bloodGroup");
+            "HealthInfoForm - Loaded data: Weight: $_weight, Blood Group: $_bloodGroup, Heart Rate: $_heartRate",
+          );
         });
       } else {
-        debugPrint("HealthInfoForm - No existing data found.");
+        setState(() {
+          _weight = "103"; // Default weight
+          _bloodGroup = "A+"; // Default blood group
+          _heartRate = "97"; // Default heart rate
+        });
+        debugPrint("HealthInfoForm - No existing data found, using defaults.");
       }
-    } else {
-      debugPrint("HealthInfoForm - No user logged in.");
     }
   }
 
@@ -69,22 +75,31 @@ class _HealthInfoFormState extends State<HealthInfoForm> {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
         debugPrint(
-            "HealthInfoForm - Saving data for UID: ${user.uid}, Weight: $_weight, Blood Group: $_bloodGroup");
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .collection('health_info')
-            .doc('data')
-            .set({
-          'weight': _weight,
-          'bloodGroup': _bloodGroup,
-        }, SetOptions(merge: true));
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Health info saved successfully!')),
+          "HealthInfoForm - Saving data for UID: ${user.uid}, Weight: $_weight, Blood Group: $_bloodGroup, Heart Rate: $_heartRate",
         );
-        Navigator.pop(context);
-      } else {
-        debugPrint("HealthInfoForm - No user logged in to save.");
+
+        try {
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .collection('health_info')
+              .doc('data')
+              .set({
+                'weight': _weight,
+                'bloodGroup': _bloodGroup,
+                'heartRate': _heartRate,
+              }, SetOptions(merge: true));
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Health info saved successfully!')),
+          );
+          Navigator.pop(context, true); // Return true to trigger reload
+        } catch (e) {
+          debugPrint("HealthInfoForm - Error saving data: $e");
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error saving health info: $e')),
+          );
+        }
       }
     }
   }
@@ -93,7 +108,7 @@ class _HealthInfoFormState extends State<HealthInfoForm> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Enter Health Info'),
+        title: const Text('Edit Health Info'),
         backgroundColor: Colors.blue.shade50,
       ),
       body: Padding(
@@ -131,14 +146,15 @@ class _HealthInfoFormState extends State<HealthInfoForm> {
                     labelText: 'Blood Group',
                     border: OutlineInputBorder(),
                   ),
-                  items: _bloodGroups.map((String bloodGroup) {
-                    return DropdownMenuItem<String>(
-                      value: bloodGroup,
-                      child: Text(bloodGroup),
-                    );
-                  }).toList(),
-                  validator: (value) =>
-                      value == null ? 'Select a blood group' : null,
+                  items:
+                      _bloodGroups.map((String bloodGroup) {
+                        return DropdownMenuItem<String>(
+                          value: bloodGroup,
+                          child: Text(bloodGroup),
+                        );
+                      }).toList(),
+                  validator:
+                      (value) => value == null ? 'Select a blood group' : null,
                   onChanged: (String? newValue) {
                     setState(() {
                       _bloodGroup = newValue;
@@ -146,13 +162,37 @@ class _HealthInfoFormState extends State<HealthInfoForm> {
                   },
                   onSaved: (value) => _bloodGroup = value,
                 ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  initialValue: _heartRate,
+                  decoration: const InputDecoration(
+                    labelText: 'Heart Rate (bpm)',
+                    border: OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly, // Only numbers
+                  ],
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Enter heart rate';
+                    }
+                    if (int.tryParse(value) == null) {
+                      return 'Please enter a valid number';
+                    }
+                    return null;
+                  },
+                  onSaved: (value) => _heartRate = value,
+                ),
                 const SizedBox(height: 32),
                 ElevatedButton(
                   onPressed: _saveData,
                   child: const Text('Save'),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 40, vertical: 15),
+                      horizontal: 40,
+                      vertical: 15,
+                    ),
                   ),
                 ),
               ],

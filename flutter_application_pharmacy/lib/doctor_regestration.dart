@@ -55,6 +55,7 @@ class _DoctorRegistrationPageState extends State<DoctorRegistrationPage> {
   // Calendar-related fields
   DateTime _currentMonth = DateTime.now();
   List<DateTime> _selectedDates = [];
+  final DateTime _today = DateTime.now(); // e.g., April 7, 2025, 8:00 PM
 
   bool _isLoading = false;
 
@@ -131,9 +132,7 @@ class _DoctorRegistrationPageState extends State<DoctorRegistrationPage> {
               "availableDays": selectedDays,
               "availableSlots": availableSlots,
               "availableDates":
-                  _selectedDates
-                      .map((date) => date.toIso8601String())
-                      .toList(), // Store selected dates
+                  _selectedDates.map((date) => date.toIso8601String()).toList(),
               "createdAt": FieldValue.serverTimestamp(),
             });
 
@@ -190,6 +189,29 @@ class _DoctorRegistrationPageState extends State<DoctorRegistrationPage> {
       daySelection = List.generate(7, (index) => false);
       slotSelection = List.generate(12, (index) => false);
       _selectedDates = [];
+      _currentMonth = DateTime.now();
+    });
+  }
+
+  // Helper function to parse time slot to DateTime for comparison
+  DateTime _parseTimeSlot(String timeSlot, DateTime date) {
+    final timeFormat = DateFormat('h:mm a');
+    final parsedTime = timeFormat.parse(timeSlot);
+    return DateTime(
+      date.year,
+      date.month,
+      date.day,
+      parsedTime.hour,
+      parsedTime.minute,
+    );
+  }
+
+  // Check if there are any future slots available today
+  bool _hasFutureSlotsToday() {
+    final now = DateTime.now();
+    return allSlots.any((slot) {
+      final slotTime = _parseTimeSlot(slot, _today);
+      return slotTime.isAfter(now);
     });
   }
 
@@ -362,7 +384,6 @@ class _DoctorRegistrationPageState extends State<DoctorRegistrationPage> {
                               onTap: () {
                                 setState(() {
                                   daySelection[index] = !daySelection[index];
-                                  // Reset dates if days change
                                   if (!daySelection[index]) {
                                     _selectedDates.removeWhere(
                                       (date) =>
@@ -430,24 +451,44 @@ class _DoctorRegistrationPageState extends State<DoctorRegistrationPage> {
                         Column(
                           children: List.generate(3, (rowIndex) {
                             return Padding(
-                              padding: EdgeInsets.only(
-                                bottom: rowIndex < 2 ? 8.0 : 0,
-                              ),
+                              padding: const EdgeInsets.only(bottom: 8.0),
                               child: Row(
                                 children: List.generate(4, (colIndex) {
                                   int index = rowIndex * 4 + colIndex;
+                                  final slotTime = allSlots[index];
+                                  final now = DateTime.now();
+
+                                  // Check if today is selected and if the slot has passed
+                                  bool isTodaySelected = _selectedDates.any(
+                                    (d) =>
+                                        d.year == _today.year &&
+                                        d.month == _today.month &&
+                                        d.day == _today.day,
+                                  );
+                                  bool isPastSlot = false;
+                                  if (isTodaySelected) {
+                                    final slotDateTime = _parseTimeSlot(
+                                      slotTime,
+                                      _today,
+                                    );
+                                    isPastSlot = slotDateTime.isBefore(now);
+                                  }
+
                                   return Expanded(
                                     child: Padding(
                                       padding: EdgeInsets.only(
                                         right: colIndex < 3 ? 8.0 : 0,
                                       ),
                                       child: GestureDetector(
-                                        onTap: () {
-                                          setState(() {
-                                            slotSelection[index] =
-                                                !slotSelection[index];
-                                          });
-                                        },
+                                        onTap:
+                                            isPastSlot
+                                                ? null
+                                                : () {
+                                                  setState(() {
+                                                    slotSelection[index] =
+                                                        !slotSelection[index];
+                                                  });
+                                                },
                                         child: AnimatedContainer(
                                           duration: const Duration(
                                             milliseconds: 200,
@@ -465,18 +506,22 @@ class _DoctorRegistrationPageState extends State<DoctorRegistrationPage> {
                                             ),
                                             border: Border.all(
                                               color:
-                                                  slotSelection[index]
+                                                  isPastSlot
+                                                      ? Colors.grey[200]!
+                                                      : slotSelection[index]
                                                       ? Colors.blue[500]!
                                                       : Colors.grey[300]!,
                                             ),
                                           ),
                                           child: Center(
                                             child: Text(
-                                              allSlots[index],
+                                              slotTime,
                                               style: TextStyle(
                                                 fontSize: 14,
                                                 color:
-                                                    slotSelection[index]
+                                                    isPastSlot
+                                                        ? Colors.grey[400]
+                                                        : slotSelection[index]
                                                         ? Colors.white
                                                         : Colors.grey[800],
                                                 fontWeight: FontWeight.w500,
@@ -603,6 +648,9 @@ class _DoctorRegistrationPageState extends State<DoctorRegistrationPage> {
       }
     }
 
+    int totalSlots = firstDayWeekday + daysInMonth;
+    int weeks = (totalSlots / 7).ceil();
+
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
@@ -611,6 +659,7 @@ class _DoctorRegistrationPageState extends State<DoctorRegistrationPage> {
         border: Border.all(color: Colors.grey[300]!),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -650,83 +699,165 @@ class _DoctorRegistrationPageState extends State<DoctorRegistrationPage> {
           ),
           const SizedBox(height: 10),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: const [
-              Text('Sun', style: TextStyle(fontWeight: FontWeight.w500)),
-              Text('Mon', style: TextStyle(fontWeight: FontWeight.w500)),
-              Text('Tue', style: TextStyle(fontWeight: FontWeight.w500)),
-              Text('Wed', style: TextStyle(fontWeight: FontWeight.w500)),
-              Text('Thu', style: TextStyle(fontWeight: FontWeight.w500)),
-              Text('Fri', style: TextStyle(fontWeight: FontWeight.w500)),
-              Text('Sat', style: TextStyle(fontWeight: FontWeight.w500)),
+              SizedBox(
+                width: 40,
+                child: Center(
+                  child: Text(
+                    'Sun',
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 40,
+                child: Center(
+                  child: Text(
+                    'Mon',
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 40,
+                child: Center(
+                  child: Text(
+                    'Tue',
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 40,
+                child: Center(
+                  child: Text(
+                    'Wed',
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 40,
+                child: Center(
+                  child: Text(
+                    'Thu',
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 40,
+                child: Center(
+                  child: Text(
+                    'Fri',
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 40,
+                child: Center(
+                  child: Text(
+                    'Sat',
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: List.generate(firstDayWeekday + daysInMonth, (index) {
-              if (index < firstDayWeekday) {
-                return const SizedBox(width: 40, height: 40);
-              }
-              final day = index - firstDayWeekday + 1;
-              final currentDate = DateTime(
-                _currentMonth.year,
-                _currentMonth.month,
-                day,
-              );
-              final dayName = DateFormat('EEEE').format(currentDate);
-              final isSelectable = selectedDays.contains(dayName);
-              final isSelected = _selectedDates.any(
-                (d) =>
-                    d.day == currentDate.day &&
-                    d.month == currentDate.month &&
-                    d.year == currentDate.year,
-              );
+          Column(
+            children: List.generate(weeks, (weekIndex) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 4.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: List.generate(7, (dayIndex) {
+                    int dayOffset =
+                        weekIndex * 7 + dayIndex - firstDayWeekday + 1;
+                    if (dayOffset <= 0 || dayOffset > daysInMonth) {
+                      return const SizedBox(width: 40, height: 40);
+                    }
 
-              return GestureDetector(
-                onTap:
-                    isSelectable
-                        ? () {
-                          setState(() {
-                            if (isSelected) {
-                              _selectedDates.removeWhere(
-                                (d) =>
-                                    d.day == currentDate.day &&
-                                    d.month == currentDate.month &&
-                                    d.year == currentDate.year,
-                              );
-                            } else {
-                              _selectedDates.add(currentDate);
-                            }
-                          });
-                        }
-                        : null,
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: isSelected ? Colors.blue[500] : Colors.transparent,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color:
-                          isSelectable ? Colors.grey[400]! : Colors.grey[200]!,
-                    ),
-                  ),
-                  child: Center(
-                    child: Text(
-                      '$day',
-                      style: TextStyle(
-                        color:
-                            isSelected
-                                ? Colors.white
-                                : isSelectable
-                                ? Colors.black
-                                : Colors.grey[400],
-                        fontWeight: FontWeight.w500,
+                    final currentDate = DateTime(
+                      _currentMonth.year,
+                      _currentMonth.month,
+                      dayOffset,
+                    );
+                    final dayName = DateFormat('EEEE').format(currentDate);
+                    final isSelectable = selectedDays.contains(dayName);
+                    final isPastDate = currentDate.isBefore(
+                      DateTime(_today.year, _today.month, _today.day),
+                    );
+                    final isToday =
+                        currentDate.day == _today.day &&
+                        currentDate.month == _today.month &&
+                        currentDate.year == _today.year;
+                    final isSelectableToday = isToday && _hasFutureSlotsToday();
+                    final isSelected = _selectedDates.any(
+                      (d) =>
+                          d.day == currentDate.day &&
+                          d.month == currentDate.month &&
+                          d.year == currentDate.year,
+                    );
+
+                    return GestureDetector(
+                      onTap:
+                          (isSelectable && !isPastDate) || isSelectableToday
+                              ? () {
+                                setState(() {
+                                  if (isSelected) {
+                                    _selectedDates.removeWhere(
+                                      (d) =>
+                                          d.day == currentDate.day &&
+                                          d.month == currentDate.month &&
+                                          d.year == currentDate.year,
+                                    );
+                                  } else {
+                                    _selectedDates.add(currentDate);
+                                  }
+                                });
+                              }
+                              : null,
+                      child: SizedBox(
+                        width: 40,
+                        height: 40,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color:
+                                isSelected
+                                    ? Colors.blue[500]
+                                    : Colors.transparent,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color:
+                                  (isSelectable && !isPastDate) ||
+                                          isSelectableToday
+                                      ? Colors.grey[400]!
+                                      : Colors.grey[200]!,
+                            ),
+                          ),
+                          child: Center(
+                            child: Text(
+                              '$dayOffset',
+                              style: TextStyle(
+                                color:
+                                    isSelected
+                                        ? Colors.white
+                                        : isPastDate && !isSelectableToday
+                                        ? Colors.grey[400]
+                                        : isSelectable || isSelectableToday
+                                        ? Colors.black
+                                        : Colors.grey[400],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
+                    );
+                  }),
                 ),
               );
             }),
