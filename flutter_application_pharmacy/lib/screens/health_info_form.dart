@@ -15,7 +15,8 @@ class _HealthInfoFormState extends State<HealthInfoForm> {
   final _formKey = GlobalKey<FormState>();
   String? _weight;
   String? _bloodGroup;
-  String? _heartRate;
+  String? _docId;
+  String? _linkedDocId;
 
   // Static list of blood groups
   final List<String> _bloodGroups = [
@@ -39,10 +40,18 @@ class _HealthInfoFormState extends State<HealthInfoForm> {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       debugPrint("HealthInfoForm - Loading data for UID: ${user.uid}");
-      final doc =
+      final userDoc =
           await FirebaseFirestore.instance
               .collection('users')
               .doc(user.uid)
+              .get();
+      _docId = userDoc.id;
+      _linkedDocId = userDoc.data()?['linkedDocId'] as String?;
+
+      final doc =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(_docId)
               .collection('health_info')
               .doc('data')
               .get();
@@ -52,17 +61,15 @@ class _HealthInfoFormState extends State<HealthInfoForm> {
           _bloodGroup =
               _bloodGroups.contains(doc['bloodGroup'] as String?)
                   ? doc['bloodGroup'] as String?
-                  : "A+"; // Default to "A+" if invalid
-          _heartRate = doc['heartRate'] as String?;
+                  : "A+";
           debugPrint(
-            "HealthInfoForm - Loaded data: Weight: $_weight, Blood Group: $_bloodGroup, Heart Rate: $_heartRate",
+            "HealthInfoForm - Loaded data: Weight: $_weight, Blood Group: $_bloodGroup",
           );
         });
       } else {
         setState(() {
           _weight = "103"; // Default weight
           _bloodGroup = "A+"; // Default blood group
-          _heartRate = "97"; // Default heart rate
         });
         debugPrint("HealthInfoForm - No existing data found, using defaults.");
       }
@@ -75,32 +82,87 @@ class _HealthInfoFormState extends State<HealthInfoForm> {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
         debugPrint(
-          "HealthInfoForm - Saving data for UID: ${user.uid}, Weight: $_weight, Blood Group: $_bloodGroup, Heart Rate: $_heartRate",
+          "HealthInfoForm - Attempting to save data for UID: ${user.uid}, Weight: $_weight, Blood Group: $_bloodGroup, DocId: $_docId, LinkedDocId: $_linkedDocId",
         );
 
         try {
-          await FirebaseFirestore.instance
+          // Save to caretaker's document
+          DocumentReference caretakerRef = FirebaseFirestore.instance
               .collection('users')
-              .doc(user.uid)
+              .doc(_docId)
               .collection('health_info')
-              .doc('data')
-              .set({
-                'weight': _weight,
-                'bloodGroup': _bloodGroup,
-                'heartRate': _heartRate,
-              }, SetOptions(merge: true));
+              .doc('data');
+
+          await caretakerRef.set({
+            'weight': _weight,
+            'bloodGroup': _bloodGroup,
+            'updatedBy': user.uid,
+            'timestamp': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+
+          // Verify the save
+          DocumentSnapshot caretakerDoc = await caretakerRef.get();
+          if (caretakerDoc.exists &&
+              caretakerDoc['weight'] == _weight &&
+              caretakerDoc['bloodGroup'] == _bloodGroup) {
+            debugPrint(
+              "HealthInfoForm - Verified save to caretaker's doc: $_docId/health_info/data - Weight: ${caretakerDoc['weight']}, Blood Group: ${caretakerDoc['bloodGroup']}",
+            );
+          } else {
+            debugPrint(
+              "HealthInfoForm - Save to caretaker's doc failed verification: Data not found or mismatched",
+            );
+          }
+
+          // If linked, save to patient's document
+          if (_linkedDocId != null && _linkedDocId!.isNotEmpty) {
+            DocumentReference patientRef = FirebaseFirestore.instance
+                .collection('users')
+                .doc(_linkedDocId)
+                .collection('health_info')
+                .doc('data');
+
+            await patientRef.set({
+              'weight': _weight,
+              'bloodGroup': _bloodGroup,
+              'updatedBy': user.uid,
+              'timestamp': FieldValue.serverTimestamp(),
+            }, SetOptions(merge: true));
+
+            // Verify the save
+            DocumentSnapshot patientDoc = await patientRef.get();
+            if (patientDoc.exists &&
+                patientDoc['weight'] == _weight &&
+                patientDoc['bloodGroup'] == _bloodGroup) {
+              debugPrint(
+                "HealthInfoForm - Verified save to patient's doc: $_linkedDocId/health_info/data - Weight: ${patientDoc['weight']}, Blood Group: ${patientDoc['bloodGroup']}",
+              );
+            } else {
+              debugPrint(
+                "HealthInfoForm - Save to patient's doc failed verification: Data not found or mismatched",
+              );
+            }
+          } else {
+            debugPrint(
+              "HealthInfoForm - No linked patient found, skipping patient save",
+            );
+          }
 
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Health info saved successfully!')),
           );
-          Navigator.pop(context, true); // Return true to trigger reload
+          Navigator.pop(context, true);
         } catch (e) {
           debugPrint("HealthInfoForm - Error saving data: $e");
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Error saving health info: $e')),
           );
         }
+      } else {
+        debugPrint("HealthInfoForm - No authenticated user found");
       }
+    } else {
+      debugPrint("HealthInfoForm - Form validation failed");
     }
   }
 
@@ -162,28 +224,7 @@ class _HealthInfoFormState extends State<HealthInfoForm> {
                   },
                   onSaved: (value) => _bloodGroup = value,
                 ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  initialValue: _heartRate,
-                  decoration: const InputDecoration(
-                    labelText: 'Heart Rate (bpm)',
-                    border: OutlineInputBorder(),
-                  ),
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly, // Only numbers
-                  ],
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Enter heart rate';
-                    }
-                    if (int.tryParse(value) == null) {
-                      return 'Please enter a valid number';
-                    }
-                    return null;
-                  },
-                  onSaved: (value) => _heartRate = value,
-                ),
+                const SizedBox(height: 16), // Space reserved for heart rate
                 const SizedBox(height: 32),
                 ElevatedButton(
                   onPressed: _saveData,

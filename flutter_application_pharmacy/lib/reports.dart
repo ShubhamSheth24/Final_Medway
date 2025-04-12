@@ -1202,173 +1202,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_application_pharmacy/home_page.dart';
 import 'package:flutter_application_pharmacy/models/user_model.dart';
 import 'package:flutter_application_pharmacy/screens/health_info_form.dart';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:flutter_application_pharmacy/services/bluetooth_service.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
-
-class BluetoothManager {
-  BluetoothDevice? _device;
-  bool _isConnecting = false;
-  bool _hasShownInitialMessage = false;
-
-  Future<void> connectToBluetooth({
-    required BuildContext context,
-    required String docId,
-    required Function(String) onHeartRateUpdate,
-    required Function(String) onMessage,
-    required Function(bool) onFetchingStateChange,
-    required bool isRefresh,
-  }) async {
-    if (_isConnecting) {
-      print("Already attempting Bluetooth connection, skipping...");
-      return;
-    }
-
-    final userModel = Provider.of<UserModel>(context, listen: false);
-    final user = FirebaseAuth.instance.currentUser;
-
-    if (user == null) {
-      print("No authenticated user found.");
-      return;
-    }
-
-    if (userModel.role!.isEmpty) {
-      try {
-        final userDoc =
-            await FirebaseFirestore.instance
-                .collection('users')
-                .where('email', isEqualTo: user.email)
-                .limit(1)
-                .get();
-        if (userDoc.docs.isNotEmpty) {
-          userModel.setRole(userDoc.docs.first.data()['role'] ?? '');
-        }
-      } catch (e) {
-        print("Error fetching user role: $e");
-        return;
-      }
-    }
-
-    if (userModel.role != 'Patient') {
-      print("User is not a patient: ${userModel.role}");
-      return;
-    }
-
-    print("User is a patient, attempting Bluetooth connection...");
-    _isConnecting = true;
-    onFetchingStateChange(true);
-
-    try {
-      if (!(await FlutterBluePlus.isSupported)) {
-        return;
-      }
-
-      if (!(await FlutterBluePlus.isOn)) {
-        if (!_hasShownInitialMessage && !isRefresh) {
-          onMessage("Please turn on Bluetooth");
-          _hasShownInitialMessage = true;
-        } else if (isRefresh) {
-          onMessage("Please turn on Bluetooth");
-        }
-        return;
-      }
-
-      List<BluetoothDevice> connectedDevices =
-          await FlutterBluePlus.connectedDevices;
-      if (connectedDevices.isEmpty) {
-        if (isRefresh) {
-          onMessage("Please connect to a Bluetooth device");
-        }
-        return;
-      }
-
-      _device = connectedDevices.first;
-      print("Connecting to: ${_device!.name} (${_device!.id})");
-
-      BluetoothDeviceState state =
-          (await _device!.state.first) as BluetoothDeviceState;
-      if (state != BluetoothDeviceState.connected) {
-        print("Device not connected, establishing connection...");
-        await _device!.connect(timeout: const Duration(seconds: 15));
-      } else {
-        print("Device already connected: ${_device!.name}");
-      }
-
-      await _discoverHeartRateService(docId, onHeartRateUpdate, onMessage);
-    } catch (e) {
-      print("Bluetooth connection error: $e");
-    } finally {
-      _isConnecting = false;
-      onFetchingStateChange(false);
-    }
-  }
-
-  Future<void> _discoverHeartRateService(
-    String docId,
-    Function(String) onHeartRateUpdate,
-    Function(String) onMessage,
-  ) async {
-    if (_device == null) {
-      print("No device available for service discovery");
-      return;
-    }
-
-    print("Discovering services on ${_device!.name}...");
-    try {
-      List<BluetoothService> services = await _device!.discoverServices();
-      print("Found ${services.length} services");
-
-      bool heartRateServiceFound = false;
-
-      for (BluetoothService service in services) {
-        for (BluetoothCharacteristic characteristic
-            in service.characteristics) {
-          if (characteristic.uuid.toString() ==
-                  "00002a37-0000-1000-8000-00805f9b34fb" &&
-              characteristic.properties.notify) {
-            heartRateServiceFound = true;
-            print("Found heart rate characteristic: ${characteristic.uuid}");
-
-            await characteristic.setNotifyValue(true);
-            characteristic.value.listen(
-              (value) {
-                if (value.isNotEmpty) {
-                  int hr = value[1];
-                  String heartRate = hr.toString();
-                  onHeartRateUpdate(heartRate);
-                  print("Heart rate updated: $heartRate");
-
-                  FirebaseFirestore.instance
-                      .collection('users')
-                      .doc(docId)
-                      .collection('health_info')
-                      .doc('data')
-                      .set({'heartRate': heartRate}, SetOptions(merge: true))
-                      .catchError((e) => print("Error saving heart rate: $e"));
-                }
-              },
-              onError: (e) {
-                print("Error reading heart rate: $e");
-              },
-            );
-            break;
-          }
-        }
-        if (heartRateServiceFound) break;
-      }
-    } catch (e) {
-      print("Service discovery error: $e");
-    }
-  }
-
-  void disconnect() {
-    _device?.disconnect();
-    _device = null;
-    _isConnecting = false;
-  }
-}
 
 class ReportsPage extends StatefulWidget {
   final String userName;
@@ -1395,7 +1233,8 @@ class _ReportsPageState extends State<ReportsPage>
   void initState() {
     super.initState();
     print("ReportsPage - Initializing...");
-    _bluetoothManager = BluetoothManager();
+    _bluetoothManager =
+        BluetoothManager(); // Use BluetoothManager from bluetooth_service.dart
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
@@ -1411,14 +1250,8 @@ class _ReportsPageState extends State<ReportsPage>
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _autoConnectToBluetooth();
-  }
-
-  @override
   void dispose() {
-    _bluetoothManager.disconnect();
+    // _bluetoothManager.disconnect();
     _animationController.dispose();
     super.dispose();
   }
@@ -1454,7 +1287,7 @@ class _ReportsPageState extends State<ReportsPage>
                 .doc('data')
                 .get();
 
-        print("Firestore response - Exists: ${doc.exists}, Doc: $doc");
+        print("Firestore response - Exists: ${doc.exists}");
         if (doc.exists) {
           final data = doc.data();
           setState(() {
@@ -1467,14 +1300,7 @@ class _ReportsPageState extends State<ReportsPage>
           });
         } else {
           print("No data found at path. Using defaults.");
-          setState(() {
-            _weight = "103";
-            _bloodGroup = "A+";
-            _heartRate = "97";
-          });
         }
-      } else {
-        print("No user document found for email: ${user.email}");
       }
     } catch (e) {
       print("Error loading health data: $e");
@@ -1487,9 +1313,13 @@ class _ReportsPageState extends State<ReportsPage>
   }
 
   Future<void> _autoConnectToBluetooth() async {
+    if (_docId == null) {
+      print("No docId available, cannot connect to Bluetooth");
+      return;
+    }
     await _bluetoothManager.connectToBluetooth(
       context: context,
-      docId: _docId ?? '',
+      docId: _docId!,
       onHeartRateUpdate: (heartRate) {
         setState(() {
           _heartRate = heartRate;
@@ -1514,11 +1344,7 @@ class _ReportsPageState extends State<ReportsPage>
       MaterialPageRoute(
         builder: (context) => HealthInfoForm(userName: widget.userName),
       ),
-    ).then((value) {
-      if (value == true) {
-        _loadHealthData(); // Reload data immediately after saving
-      }
-    });
+    ).then((_) => _loadHealthData());
   }
 
   Future<void> _checkAndDownloadWeeklyReport() async {
@@ -1686,9 +1512,19 @@ class _ReportsPageState extends State<ReportsPage>
                                   color: Colors.blueAccent,
                                 ),
                                 onPressed: () async {
+                                  if (_docId == null) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'User data not loaded, please try again',
+                                        ),
+                                      ),
+                                    );
+                                    return;
+                                  }
                                   await _bluetoothManager.connectToBluetooth(
                                     context: context,
-                                    docId: _docId ?? '',
+                                    docId: _docId!,
                                     onHeartRateUpdate: (heartRate) {
                                       setState(() {
                                         _heartRate = heartRate;
@@ -1819,6 +1655,7 @@ class InfoCard extends StatelessWidget {
   }
 }
 
+// _LatestReportsSection remains unchanged as per your request
 class _LatestReportsSection extends StatefulWidget {
   final String userName;
   final String? docId;
@@ -2194,7 +2031,7 @@ class __LatestReportsSectionState extends State<_LatestReportsSection>
                               '${_reminders.isNotEmpty ? (_reminders.where((r) => r['taken'] as bool).length / _reminders.length * 100).toStringAsFixed(1) : '0'}%',
                               style: const TextStyle(
                                 fontSize: 28,
-                                fontWeight: FontWeight.bold, // Fixed typo here
+                                fontWeight: FontWeight.bold,
                                 color: Colors.blueAccent,
                               ),
                             ),
